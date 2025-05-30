@@ -29,12 +29,13 @@ import { PlusCircle, BookOpen, MessageSquare, LogOut, User, Zap, Home, Send, Ima
 
 // Konfigurasi Firebase (Gunakan __firebase_config global jika tersedia)
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-    apiKey: "YOUR_API_KEY", // Ganti dengan API key Anda jika __firebase_config tidak tersedia
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyDz8mZoFdWLZs9zRC2xDndRzKQ7sju-Goc",
+  authDomain: "eduku-web.firebaseapp.com",
+  projectId: "eduku-web",
+  storageBucket: "eduku-web.firebasestorage.app",
+  messagingSenderId: "662463693471",
+  appId: "1:662463693471:web:e456e52ecb91f97ce498aa",
+  measurementId: "G-7LRNV5NV9X"
 };
 
 // Inisialisasi Firebase
