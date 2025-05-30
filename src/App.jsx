@@ -116,113 +116,36 @@ const CustomModal = ({ isOpen, onClose, title, children }) => {
 
 
 // Komponen Halaman Autentikasi
-const AuthPage = ({ onAuthSuccess }) => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [isLogin, setIsLogin] = useState(true);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [notification, setNotification] = useState({ message: '', type: '' });
+// AuthPage.jsx
+import React from 'react';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
-    const handleAuth = async (e) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-        setNotification({ message: '', type: '' });
+const auth = getAuth();
+const provider = new GoogleAuthProvider();
 
-        if (!email || !password) {
-            setError("Email dan password tidak boleh kosong.");
-            setLoading(false);
-            return;
-        }
-
+const AuthPage = () => {
+    const handleGoogleLogin = async () => {
         try {
-            if (isLogin) {
-                await signInWithEmailAndPassword(auth, email, password);
-                setNotification({ message: 'Login berhasil!', type: 'success' });
-            } else {
-                await createUserWithEmailAndPassword(auth, email, password);
-                setNotification({ message: 'Registrasi berhasil! Silakan login.', type: 'success' });
-                setIsLogin(true); // Arahkan ke login setelah registrasi
-            }
-            // onAuthSuccess akan dipanggil oleh onAuthStateChanged di App.js
-        } catch (err) {
-            setError(err.message.includes("auth/invalid-credential") ? "Email atau password salah." : 
-                     err.message.includes("auth/email-already-in-use") ? "Email sudah terdaftar." :
-                     "Terjadi kesalahan. Coba lagi.");
-            setNotification({ message: error, type: 'error' });
-        } finally {
-            setLoading(false);
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            alert("Gagal login: " + error.message);
         }
     };
-    
-    const closeNotification = () => setNotification({ message: '', type: '' });
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-blue-500 p-4">
-            <CustomNotification message={notification.message} type={notification.type} onClose={closeNotification} />
-            <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-                <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
-                    {isLogin ? 'Selamat Datang di Eduku!' : 'Buat Akun Eduku'}
-                </h2>
-                <form onSubmit={handleAuth}>
-                    <div className="mb-6">
-                        <label className="block text-gray-700 text-sm font-semibold mb-2" htmlFor="email">
-                            Email
-                        </label>
-                        <input
-                            className="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            id="email"
-                            type="email"
-                            placeholder="email@domain.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div className="mb-6">
-                        <label className="block text-gray-700 text-sm font-semibold mb-2" htmlFor="password">
-                            Password
-                        </label>
-                        <input
-                            className="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            id="password"
-                            type="password"
-                            placeholder="********"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                    </div>
-                    {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
-                    <div className="flex items-center justify-between mb-6">
-                        <button
-                            className={`w-full font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-transform transform hover:scale-105 ${loading ? 'bg-gray-400' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
-                            type="submit"
-                            disabled={loading}
-                        >
-                            {loading ? (isLogin ? 'Logging in...' : 'Registering...') : (isLogin ? 'Login' : 'Registrasi')}
-                        </button>
-                    </div>
-                    <p className="text-center text-sm text-gray-600">
-                        {isLogin ? "Belum punya akun?" : "Sudah punya akun?"}{' '}
-                        <button
-                            type="button"
-                            className="font-semibold text-purple-600 hover:text-purple-800"
-                            onClick={() => { setIsLogin(!isLogin); setError('');}}
-                        >
-                            {isLogin ? 'Registrasi di sini' : 'Login di sini'}
-                        </button>
-                    </p>
-                </form>
-                 <p className="text-center text-xs text-gray-500 mt-8">
-                    UserId: {auth.currentUser?.uid || "Belum login"} <br/>
-                    AppId: {appId}
-                </p>
+        <div className="min-h-screen flex items-center justify-center bg-purple-100">
+            <div className="bg-white p-8 rounded-lg shadow-lg text-center">
+                <h2 className="text-2xl font-bold mb-4">Selamat Datang di Eduku</h2>
+                <button onClick={handleGoogleLogin} className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">
+                    Login dengan Google
+                </button>
             </div>
         </div>
     );
 };
+
+export default AuthPage;
+    
 
 // Komponen Beranda (Feed)
 const FeedPage = ({ user }) => {
