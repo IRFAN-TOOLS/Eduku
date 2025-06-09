@@ -87,23 +87,48 @@ const curriculum = {
 const callGeminiAPI = async (prompt, isJson = false) => {
     const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
     if (isJson) payload.generationConfig = { responseMimeType: "application/json" };
-    const apiKey = "AIzaSyArJ1P8HanSQ_XVWX9m4kUlsIVXrBRInik"; // Ganti dengan API Key Anda
+    // SEBAIKNYA API KEY TIDAK DI-HARDCODE. Gunakan environment variable.
+    const apiKey = "AIzaSyArJ1P8HanSQ_XVWX9m4kUlsIVXrBRInik"; 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    if (!response.ok) throw new Error(`Gemini API call failed: ${response.status}`);
-    const result = await response.json();
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error("Invalid Gemini API response");
-    return text;
+    try {
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) {
+            console.error("Gemini API Error Response:", await response.text());
+            throw new Error(`Gemini API call failed: ${response.status}`);
+        }
+        const result = await response.json();
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) {
+             console.error("Invalid Gemini API response structure:", result);
+            throw new Error("Invalid Gemini API response");
+        }
+        return text;
+    } catch (error) {
+        console.error("Error calling Gemini API:", error);
+        throw error; // Re-throw the error to be caught by the caller
+    }
 };
 
 const callImagenAPI = async (prompt) => {
+    // API ini mungkin tidak stabil. Pertimbangkan untuk menggantinya jika sering gagal.
     const apiUrl = 'https://api-preview.chatgot.io/api/v1/deepimg/flux-1-dev';
     const payload = { prompt };
-    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    if (!response.ok) throw new Error(`DeepImg API call failed: ${response.status}`);
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
+     try {
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) {
+            console.error("Imagen API Error Response:", await response.text());
+            throw new Error(`Imagen API call failed: ${response.status}`);
+        }
+        const blob = await response.blob();
+        if (blob.type.startsWith('image/')) {
+            return URL.createObjectURL(blob);
+        } else {
+            throw new Error("API did not return a valid image.");
+        }
+    } catch (error) {
+        console.error("Error calling Imagen API:", error);
+        throw error; // Re-throw
+    }
 };
 
 // --- Custom Hook for Local Storage ---
@@ -135,7 +160,7 @@ const AppProvider = ({ children }) => {
     const [topic, setTopic] = useState('');
     const [lessonContent, setLessonContent] = useState(null);
     const [bankSoalQuestions, setBankSoalQuestions] = useState([]);
-    const [history, setHistory] = useLocalStorage('bdukasiHistory_v14', []);
+    const [history, setHistory] = useLocalStorage('bdukasiHistory_v15', []); // Versi baru
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -152,13 +177,19 @@ const AppProvider = ({ children }) => {
     
     const handleGlobalError = useCallback((message) => {
         setError(message || "Terjadi kesalahan yang tidak diketahui.");
+        // Otomatis hapus error setelah beberapa detik
+        setTimeout(() => setError(''), 8000);
     }, []);
     
     const handleSignOut = () => {
         signOut(auth).catch(err => console.error("Sign out error:", err));
     };
 
-    const value = { user, authLoading, handleSignOut, screen, setScreen, level, setLevel, track, setTrack, subject, setSubject, topic, setTopic, lessonContent, setLessonContent, bankSoalQuestions, setBankSoalQuestions, history, updateHistory, error, setError: handleGlobalError };
+    // Memoize context value to prevent unnecessary re-renders
+    const value = React.useMemo(() => ({
+        user, authLoading, handleSignOut, screen, setScreen, level, setLevel, track, setTrack, subject, setSubject, topic, setTopic, lessonContent, setLessonContent, bankSoalQuestions, setBankSoalQuestions, history, updateHistory, error, setError: handleGlobalError
+    }), [user, authLoading, screen, level, track, subject, topic, lessonContent, bankSoalQuestions, history, error, updateHistory, handleGlobalError]);
+
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
@@ -168,14 +199,27 @@ export default function App() {
 }
 
 const Main = () => {
-    const { user, authLoading, error, setError, setScreen } = useContext(AppContext);
+    const { user, authLoading, error, setError } = useContext(AppContext);
     
-    if (authLoading) return <LoadingScreen message="Memeriksa sesi Anda..." />;
-    if (error) return <ErrorScreen message={error} onRetry={() => { setError(''); setScreen('levelSelection'); }} />;
-
-    if (!user) return <LoginScreen />;
-    
-    return <AppScreens />;
+    return (
+        <div className="bg-gray-50 min-h-screen font-sans antialiased">
+            {authLoading ? (
+                <LoadingScreen message="Memeriksa sesi Anda..." />
+            ) : !user ? (
+                <LoginScreen />
+            ) : (
+                <AppScreens />
+            )}
+            {/* Global Error Notification */}
+            {error && (
+                 <div className="fixed bottom-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg z-50 flex items-center gap-3 animate-pulse">
+                    <X size={24} />
+                    <span>{error}</span>
+                    <button onClick={() => setError('')} className="font-bold ml-4">TUTUP</button>
+                </div>
+            )}
+        </div>
+    );
 };
 
 const AppScreens = () => {
@@ -195,7 +239,6 @@ const AppScreens = () => {
 }
 
 // --- Dynamic Icon Component (FIX) ---
-// Komponen ini untuk merender ikon berdasarkan nama (string) secara dinamis dan aman.
 const iconMap = {
     School, BrainCircuit, Lightbulb, FileText, ArrowLeft, Loader, Sparkles, 
     History, UploadCloud, Youtube, Check, X, MessageSquarePlus, FlaskConical, Globe, 
@@ -204,10 +247,7 @@ const iconMap = {
 
 const DynamicIcon = ({ name, ...props }) => {
     const IconComponent = iconMap[name];
-    if (!IconComponent) {
-        // Fallback jika nama ikon tidak ditemukan
-        return <HelpCircle {...props} />;
-    }
+    if (!IconComponent) return <HelpCircle {...props} />; // Fallback
     return <IconComponent {...props} />;
 };
 
@@ -216,7 +256,7 @@ const ContentRenderer = ({ text }) => {
     if (!text) return <p className="text-gray-500">Materi tidak tersedia.</p>;
     const parts = text.split('$$');
     return (
-        <div className="prose prose-lg max-w-none">
+        <div className="prose prose-lg max-w-none text-gray-800">
             {parts.map((part, index) => {
                 if (index % 2 === 0) {
                     return <ReactMarkdown key={index}>{part}</ReactMarkdown>;
@@ -244,7 +284,7 @@ const LoginScreen = () => {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-white">
             <Sparkles className="mx-auto text-blue-600 h-20 w-20" />
-            <h1 className="text-4xl font-bold text-gray-800 mt-4 text-center">Selamat Datang di Bdukasi Expert</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mt-4 text-center">Selamat Datang di Bdukasi Expert</h1>
             <p className="text-gray-600 mt-2 mb-8 text-center max-w-md">Silakan login untuk memulai petualangan belajarmu!</p>
             <button onClick={handleLogin} className="w-full max-w-xs p-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-lg flex items-center justify-center">
                 <svg className="w-6 h-6 mr-3" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C42.02,35.622,44,30.138,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
@@ -258,15 +298,15 @@ const LoginScreen = () => {
 const LevelSelectionScreen = () => {
     const { setScreen, setLevel, handleSignOut, user } = useContext(AppContext);
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-white">
+        <div className="flex flex-col items-center justify-center min-h-screen p-4">
             <div className="absolute top-4 right-4 flex items-center">
                 <span className="mr-2 font-semibold text-gray-600 hidden sm:block">{user.displayName}</span>
-                <button onClick={handleSignOut} className="bg-red-500 text-white px-3 py-1 rounded-lg font-semibold">Logout</button>
+                <button onClick={handleSignOut} className="bg-red-500 text-white px-3 py-1 rounded-lg font-semibold hover:bg-red-600 transition">Logout</button>
             </div>
             <Sparkles className="mx-auto text-blue-600 h-20 w-20" />
-            <h1 className="text-4xl font-bold text-gray-800 mt-4 text-center">Bdukasi Expert</h1>
-            <p className="text-gray-600 mt-2 mb-8 text-center max-w-md">Pilih jenjangmu untuk melanjutkan.</p>
-            <div className="w-full max-w-xs space-y-4">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mt-4 text-center">Bdukasi Expert</h1>
+            <p className="text-gray-600 mt-2 mb-8 text-center max-w-md">Pilih jenjang pendidikanmu untuk melanjutkan.</p>
+            <div className="w-full max-w-sm space-y-4">
                 {Object.keys(curriculum).map(lvl => (<button key={lvl} onClick={() => { setLevel(lvl); setScreen(lvl === 'SMA' ? 'trackSelection' : 'subjectSelection'); }} className="w-full p-5 bg-blue-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-lg flex items-center justify-center"> <School className="mr-3" /> {lvl} </button>))}
             </div>
         </div>
@@ -278,7 +318,7 @@ const TrackSelectionScreen = () => {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-4">
             <Header onBack={() => setScreen('levelSelection')} title="Pilih Jurusan SMA" />
-            <div className="w-full max-w-xs space-y-4">
+            <div className="w-full max-w-sm space-y-4">
                 <button onClick={() => { setTrack('IPA'); setScreen('subjectSelection'); }} className="w-full p-5 bg-green-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-lg flex items-center justify-center"> <FlaskConical className="mr-3" /> IPA </button>
                 <button onClick={() => { setTrack('IPS'); setScreen('subjectSelection'); }} className="w-full p-5 bg-yellow-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-lg flex items-center justify-center"> <Globe className="mr-3" /> IPS </button>
                 <button onClick={() => { setTrack('Bahasa'); setScreen('subjectSelection'); }} className="w-full p-5 bg-rose-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-lg flex items-center justify-center"> <Languages className="mr-3" /> Bahasa </button>
@@ -293,19 +333,18 @@ const SubjectSelectionScreen = () => {
     const backScreen = level === 'SMA' ? 'trackSelection' : 'levelSelection';
 
     return (
-        <div className="p-4 max-w-4xl mx-auto">
+        <div className="p-4 sm:p-6 max-w-6xl mx-auto">
             <Header onBack={() => setScreen(backScreen)} title={`Pelajaran ${level} ${track || ''}`} />
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {subjects.map((s) => (
                         <button 
                             key={s.name} 
                             onClick={() => { setSubject(s); setScreen(s.name === 'Tanya Segalanya' ? 'generalChat' : 'subjectDashboard'); }} 
                             className="p-4 bg-gray-50 hover:bg-blue-100 rounded-xl flex flex-col items-center justify-center text-center transition-transform transform hover:scale-105 aspect-square"
                         >
-                            {/* FIX: Menggunakan DynamicIcon untuk merender ikon dengan aman */}
                             <DynamicIcon name={s.iconName} size={48} className={s.color} />
-                            <span className="font-semibold text-gray-700 text-center mt-3">{s.name}</span>
+                            <span className="font-semibold text-gray-700 text-sm sm:text-base text-center mt-3">{s.name}</span>
                         </button>
                     ))}
                 </div>
@@ -318,17 +357,14 @@ const SubjectDashboardScreen = () => {
     const { subject, setScreen, setTopic } = useContext(AppContext);
     const [activeTab, setActiveTab] = useState('rekomendasi');
 
-    // Menangani jika `subject` null saat render pertama
     if (!subject) {
-        // Bisa kembali ke halaman sebelumnya atau tampilkan loading
         return <LoadingScreen message="Memuat data mata pelajaran..." />;
     }
 
     const openLesson = (topicStr) => { setTopic(topicStr); setScreen('lesson'); };
     
     return (
-        <div className="p-4 max-w-3xl mx-auto">
-            {/* FIX: Menggunakan DynamicIcon untuk mencegah error cloneElement */}
+        <div className="p-4 sm:p-6 max-w-3xl mx-auto">
             <Header 
                 onBack={() => setScreen('subjectSelection')} 
                 title={subject.name} 
@@ -369,127 +405,208 @@ const SearchTopic = ({ onSearch }) => {
                     placeholder="Cari topik spesifik..." 
                     className="w-full p-3 border-2 border-gray-200 rounded-l-lg focus:ring-blue-500 focus:border-blue-500"
                 />
-                <button onClick={handleSearch} className="p-3 bg-blue-500 text-white rounded-r-lg font-semibold hover:bg-blue-600">Cari</button>
+                <button onClick={handleSearch} className="p-3 bg-blue-500 text-white rounded-r-lg font-semibold hover:bg-blue-600 transition-colors">Cari</button>
             </div>
         </div>
     );
 };
 
-
 const RecommendationTab = () => {
-    const { level, track, subject, setTopic, setScreen } = useContext(AppContext);
+    const { level, track, subject, setTopic, setScreen, setError } = useContext(AppContext);
     const [topics, setTopics] = useState([]);
-    const [isLoadingTab, setIsLoadingTab] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const subjectName = subject?.name;
 
     useEffect(() => {
-        setIsLoadingTab(true);
-        const prompt = `Berdasarkan Kurikulum Merdeka, buatkan 5 rekomendasi topik utama untuk mata pelajaran "${subject.name}" bagi siswa ${level} ${track ? `jurusan ${track}` : ''}. Jawab dalam format JSON array string.`;
+        if (!subjectName) return;
+
+        setIsLoading(true);
+        const prompt = `Berdasarkan Kurikulum Merdeka, buatkan 5 rekomendasi topik utama untuk mata pelajaran "${subjectName}" bagi siswa ${level} ${track ? `jurusan ${track}` : ''}. Jawab dalam format JSON array string. Contoh: ["Topik 1", "Topik 2"]`;
+        
         callGeminiAPI(prompt, true)
             .then(responseText => {
                 try {
-                    setTopics(JSON.parse(responseText));
-                } catch(e) {
+                    const parsedTopics = JSON.parse(responseText);
+                    if (Array.isArray(parsedTopics)) {
+                        setTopics(parsedTopics);
+                    } else {
+                        setTopics([]);
+                    }
+                } catch (e) {
                     console.error("Gagal parse JSON rekomendasi:", e);
-                    setTopics([]); // Fallback jika JSON tidak valid
+                    setTopics([]);
+                    setError("Gagal mendapatkan rekomendasi topik.");
                 }
             })
-            .catch(console.error)
-            .finally(() => setIsLoadingTab(false));
-    }, [level, track, subject.name]);
+            .catch(err => {
+                console.error(err);
+                setError("Gagal menghubungi server untuk rekomendasi.");
+            })
+            .finally(() => setIsLoading(false));
+    }, [level, track, subjectName, setError]);
 
-    const openLesson = (topicStr) => { setTopic(topicStr); setScreen('lesson'); };
-    if (isLoadingTab) return <div className="text-center p-8"><Loader className="mx-auto animate-spin text-blue-500"/></div>;
+    const openLesson = (topicStr) => {
+        setTopic(topicStr);
+        setScreen('lesson');
+    };
+
+    if (isLoading) return <div className="text-center p-8"><Loader className="mx-auto animate-spin text-blue-500"/></div>;
+    
+    if (topics.length === 0) return <p className="text-center p-5 text-gray-500">Tidak ada rekomendasi topik saat ini.</p>;
+
     return <div className="space-y-3">{topics.map((topic, i) => <ListItem key={i} text={topic} onClick={() => openLesson(topic)} />)}</div>;
 };
 
 const HistoryTab = () => {
     const { level, track, subject, history, setTopic, setScreen } = useContext(AppContext);
-    const filteredHistory = history.filter(h => h.subject === subject.name && h.level === level && h.track === track);
-    const openLesson = (topicStr) => { setTopic(topicStr); setScreen('lesson'); };
-    if (filteredHistory.length === 0) return <p className="text-center p-5 text-gray-500">Belum ada riwayat belajar.</p>;
+    const filteredHistory = history.filter(h => h.subject === subject.name && h.level === level && (h.track === track || !h.track));
+    
+    const openLesson = (topicStr) => {
+        setTopic(topicStr);
+        setScreen('lesson');
+    };
+
+    if (filteredHistory.length === 0) return <p className="text-center p-5 text-gray-500">Belum ada riwayat belajar untuk mata pelajaran ini.</p>;
+
     return <div className="space-y-3">{filteredHistory.map((h, i) => <ListItem key={i} text={h.topic} onClick={() => openLesson(h.topic)} />)}</div>;
 };
 
 const LessonScreen = () => { 
     const { topic, level, track, subject, setScreen, setLessonContent, updateHistory, setError } = useContext(AppContext);
+    
     const [content, setContent] = useState({ text: null, imageUrl: null, video: null });
     const [isChatOpen, setChatOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const stableUpdateHistory = useCallback(updateHistory, [updateHistory]);
-    const stableSetLessonContent = useCallback(setLessonContent, [setLessonContent]);
-    const stableSetError = useCallback(setError, [setError]);
+
+    const subjectName = subject?.name;
 
     useEffect(() => {
-        if(!topic) { setScreen('subjectDashboard'); return; }
+        if (!topic || !subjectName) {
+            setScreen('subjectDashboard');
+            return;
+        }
+
         let isMounted = true;
         const fetchContent = async () => {
-            if(!isMounted) return;
+            if (!isMounted) return;
             setIsLoading(true);
-            stableUpdateHistory({ level, track, subject: subject.name, topic, date: new Date().toISOString() });
-            const fullContext = `${subject.name} untuk siswa ${level} ${track ? `jurusan ${track}` : ''}`;
+            
+            updateHistory({ level, track, subject: subjectName, topic, date: new Date().toISOString() });
+            
+            const fullContext = `${subjectName} untuk siswa ${level} ${track ? `jurusan ${track}` : ''}`;
             const textPrompt = `Sebagai guru ahli, buatkan materi lengkap tentang "${topic}" (${fullContext}) sesuai Kurikulum Merdeka. Gunakan format Markdown (heading, list, bold). Untuk RUMUS MATEMATIKA, WAJIB gunakan delimiter $$...$$ (contoh: $$L = \\pi r^2$$).`;
             const imagePrompt = `Educational illustration, simple colorful flat design style, topic: "${topic}" for ${fullContext}.`;
             const videoPrompt = `Cari satu video YouTube berbahasa Indonesia paling relevan untuk menjelaskan "${topic}" (${fullContext}). Jawab HANYA dalam format JSON dengan key "title" dan "youtubeId".`;
+
             try {
-                const results = await Promise.allSettled([ callGeminiAPI(textPrompt), callImagenAPI(imagePrompt), callGeminiAPI(videoPrompt, true) ]);
-                if(!isMounted) return;
-                const lessonText = results[0].status === 'fulfilled' ? results[0].value : 'Gagal memuat materi teks.';
+                const results = await Promise.allSettled([
+                    callGeminiAPI(textPrompt),
+                    callImagenAPI(imagePrompt),
+                    callGeminiAPI(videoPrompt, true)
+                ]);
+
+                if (!isMounted) return;
+
+                const lessonText = results[0].status === 'fulfilled' ? results[0].value : 'Gagal memuat materi teks. Coba lagi nanti.';
                 const imageUrl = results[1].status === 'fulfilled' ? results[1].value : null;
-                const videoJson = results[2].status === 'fulfilled' ? JSON.parse(results[2].value) : null;
+                
+                let videoJson = null;
+                if (results[2].status === 'fulfilled') {
+                    try {
+                        videoJson = JSON.parse(results[2].value);
+                    } catch (e) {
+                        console.error("Gagal parse JSON video:", e);
+                    }
+                }
+
+                if (results[1].status !== 'fulfilled') {
+                    setError("Gagal memuat gambar ilustrasi.");
+                }
+                 if (results[2].status !== 'fulfilled' || !videoJson) {
+                    setError("Gagal menemukan video pembelajaran.");
+                }
+
                 setContent({ text: lessonText, imageUrl, video: videoJson });
-                stableSetLessonContent(lessonText);
-            } catch (err) { stableSetError('Gagal memuat sebagian konten.'); } 
-            finally { if(isMounted) setIsLoading(false); }
+                setLessonContent(lessonText);
+
+            } catch (err) {
+                console.error("General error fetching lesson content:", err);
+                setError('Gagal memuat konten pelajaran.');
+            } finally {
+                if (isMounted) setIsLoading(false);
+            }
         };
+
         fetchContent();
-        return () => { isMounted = false; };
-    }, [topic, level, track, subject, stableSetLessonContent, stableUpdateHistory, stableSetError, setScreen]);
+
+        return () => {
+            isMounted = false;
+        };
+    }, [topic, level, track, subjectName, setLessonContent, updateHistory, setError, setScreen]);
     
     if (isLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-white">
-                <Loader className="h-16 w-16 text-blue-500 animate-spin" />
-                <p className="mt-4 text-gray-600 font-medium">Membuat materi lengkap untuk: {topic}</p>
-            </div>
-        );
+        return <LoadingScreen message={`Membuat materi lengkap untuk: ${topic}`} />;
     }
 
     return (
         <div className="relative min-h-screen">
-            <div className="p-4 max-w-3xl mx-auto pb-24">
+            <div className="p-4 sm:p-6 max-w-4xl mx-auto pb-24">
                 <Header onBack={() => setScreen('subjectDashboard')} title={topic} />
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                    <img src={content.imageUrl || `https://placehold.co/1200x600/e2e8f0/4a5568?text=Ilustrasi+untuk+${encodeURIComponent(topic)}`} alt={`Ilustrasi untuk ${topic}`} className="w-full h-48 md:h-64 object-cover bg-gray-200"/>
-                    <div className="p-6">
+                    <div className="w-full h-48 md:h-64 bg-gray-200 flex items-center justify-center">
+                         {content.imageUrl ? (
+                            <img src={content.imageUrl} alt={`Ilustrasi untuk ${topic}`} className="w-full h-full object-cover"/>
+                        ) : (
+                            <div className="text-center text-gray-500 p-4">
+                                <FileText size={48} className="mx-auto"/>
+                                <p className="mt-2">Ilustrasi tidak tersedia</p>
+                            </div>
+                        )}
+                    </div>
+                    <div className="p-4 sm:p-6">
                         <ContentRenderer text={content.text} />
-                        {content.video && content.video.youtubeId && (<div className="mt-8"><h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center"><Youtube className="text-red-500 mr-2"/> Video Pembelajaran</h2><div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden shadow-lg"><iframe className="w-full h-full" src={`https://www.youtube.com/embed/${content.video.youtubeId}`} title={content.video.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe></div></div>)}
+                        {content.video && content.video.youtubeId && (
+                            <div className="mt-8">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                                    <Youtube className="text-red-500 mr-2"/> Video Pembelajaran
+                                </h2>
+                                <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden shadow-lg">
+                                    <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${content.video.youtubeId}`} title={content.video.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
+                                </div>
+                            </div>
+                        )}
                         <button onClick={() => setScreen('quiz')} className="mt-8 w-full p-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"> Uji Pemahaman </button>
                     </div>
                 </div>
             </div>
-            <button onClick={() => setChatOpen(true)} className="fixed bottom-6 right-6 p-4 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700"> <MessageSquarePlus /> </button>
+            <button onClick={() => setChatOpen(true)} className="fixed bottom-6 right-6 p-4 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-transform hover:scale-110"> <MessageSquarePlus /> </button>
             {isChatOpen && <ChatModal topic={topic} subject={subject.name} onClose={() => setChatOpen(false)} />}
         </div>
     );
 };
 
 const QuizPlayerScreen = () => {
-    const { lessonContent, level, track, setScreen, setError } = useContext(AppContext);
+    const { lessonContent, level, track, subject, setScreen, setError } = useContext(AppContext);
     const [quiz, setQuiz] = useState([]);
     const [userAnswers, setUserAnswers] = useState({});
     const [isSubmitted, setSubmitted] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if(!lessonContent) { setError("Konten materi tidak ditemukan untuk membuat kuis."); setScreen('subjectDashboard'); return; }
+        if(!lessonContent) { 
+            setError("Konten materi tidak ditemukan untuk membuat kuis."); 
+            setScreen('subjectDashboard'); 
+            return; 
+        }
         setIsLoading(true);
-        const prompt = `Buat 4 pertanyaan kuis pilihan ganda (A, B, C, D) dari materi ini, target siswa ${level} ${track||''}: "${lessonContent.substring(0,6000)}". Kembalikan dalam format JSON array. Setiap objek harus memiliki key: "question" (string), "options" (array of strings), dan "correctAnswer" (string).`;
+        const prompt = `Buat 4 pertanyaan kuis pilihan ganda (A, B, C, D) dari materi tentang "${subject.name}" ini, target siswa ${level} ${track||''}: "${lessonContent.substring(0,6000)}". Kembalikan dalam format JSON array. Setiap objek harus memiliki key: "question" (string), "options" (array of strings), dan "correctAnswer" (string). Pastikan correctAnswer ada di dalam options.`;
+        
         callGeminiAPI(prompt, true)
             .then(responseText => {
                 try {
                     const parsed = JSON.parse(responseText);
-                    // Validasi sederhana untuk memastikan formatnya array
-                    if (Array.isArray(parsed)) {
+                    if (Array.isArray(parsed) && parsed.every(q => q.question && q.options && q.correctAnswer)) {
                         setQuiz(parsed);
                     } else {
                         throw new Error("Format respons kuis tidak valid.");
@@ -504,64 +621,89 @@ const QuizPlayerScreen = () => {
                 console.error(err);
                 setError('Gagal memuat kuis dari server.');
             })
-            .finally(() => setIsLoading(false)); // FIX: Menggunakan setIsLoading
-    }, [lessonContent, level, track, setError, setScreen]);
+            .finally(() => setIsLoading(false));
+    }, [lessonContent, level, track, subject.name, setError, setScreen]);
 
     const score = quiz.reduce((acc, q, i) => acc + (userAnswers[i] === q.correctAnswer ? 1 : 0), 0);
     const scorePercentage = quiz.length > 0 ? Math.round(score/quiz.length * 100) : 0;
     
-    if (isLoading) return <div className="p-4 max-w-2xl mx-auto"><Header onBack={() => setScreen('lesson')} title="Uji Pemahaman" /><div className="bg-white rounded-2xl shadow-lg p-10 text-center"><Loader className="mx-auto animate-spin text-blue-500" size={48} /><p className="mt-4 font-semibold">Membuat soal kuis...</p></div></div>;
+    if (isLoading) return <LoadingScreen message="Membuat soal kuis..." />;
     
     return (
-        <div className="p-4 max-w-2xl mx-auto">
+        <div className="p-4 sm:p-6 max-w-2xl mx-auto">
             <Header onBack={() => setScreen('lesson')} title="Uji Pemahaman" />
             <div className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
+                {quiz.length === 0 && !isLoading && (
+                    <p className="text-center text-gray-500 p-4">Tidak dapat memuat kuis. Silakan kembali ke materi.</p>
+                )}
                 {isSubmitted && <div className="text-center p-4 rounded-lg bg-blue-50"><h2 className="text-2xl font-bold">Skor Kamu</h2><p className="text-5xl font-bold text-blue-600 my-2">{scorePercentage}</p><p className="text-gray-600">Kamu benar {score} dari {quiz.length} pertanyaan.</p></div>}
                 {quiz.map((q, qIndex) => (
                     <div key={qIndex}>
                         <p className="font-semibold text-gray-800 mb-3">{qIndex + 1}. {q.question}</p>
                         <div className="space-y-2">
-                            {q.options.map((opt) => {
+                            {q.options.map((opt, optIndex) => {
                                 const isSelected = userAnswers[qIndex] === opt;
-                                let c = 'bg-white hover:bg-gray-50 border-gray-200';
+                                let c = 'bg-white hover:bg-gray-100 border-gray-200';
                                 if(isSubmitted){ if(opt===q.correctAnswer) c='bg-green-100 border-green-500 text-green-800 font-bold'; else if(isSelected) c='bg-red-100 border-red-500 text-red-800';} 
                                 else if(isSelected) c='bg-blue-100 border-blue-500';
-                                return (<button key={opt} onClick={()=>!isSubmitted && setUserAnswers(p=>({...p,[qIndex]:opt}))} className={`w-full text-left p-3 rounded-lg border-2 transition ${c}`}> {opt} </button>);
+                                return (<button key={optIndex} onClick={()=>!isSubmitted && setUserAnswers(p=>({...p,[qIndex]:opt}))} className={`w-full text-left p-3 rounded-lg border-2 transition ${c}`}> {opt} </button>);
                             })}
                         </div>
                     </div>
                 ))}
             </div>
-            {!isSubmitted && quiz.length > 0 && <button onClick={() => setSubmitted(true)} disabled={Object.keys(userAnswers).length !== quiz.length} className="mt-6 w-full p-4 bg-green-600 text-white font-bold rounded-lg disabled:bg-gray-400">Kumpulkan Jawaban</button>}
-            {isSubmitted && <button onClick={() => setScreen('lesson')} className="mt-6 w-full p-4 bg-blue-600 text-white font-bold rounded-lg">Kembali ke Materi</button>}
+            {!isSubmitted && quiz.length > 0 && <button onClick={() => setSubmitted(true)} disabled={Object.keys(userAnswers).length !== quiz.length} className="mt-6 w-full p-4 bg-green-600 text-white font-bold rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed">Kumpulkan Jawaban</button>}
+            {isSubmitted && <button onClick={() => setScreen('lesson')} className="mt-6 w-full p-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">Kembali ke Materi</button>}
         </div>
     );
 };
+
 const BankSoalGeneratorScreen = () => {
-    const { level, track, setScreen, setError, setBankSoalQuestions, subject } = useContext(AppContext);
+    const { level, track, subject, setScreen, setError, setBankSoalQuestions } = useContext(AppContext);
     const [material, setMaterial] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     const handleGenerate = async () => {
-        if (!material.trim()) return;
+        if (!material.trim()) {
+            setError("Silakan masukkan materi terlebih dahulu.");
+            return;
+        };
         setIsLoading(true);
         try {
-            const prompt = `Buat 5 pertanyaan (campuran esai & pilihan ganda 4 opsi) dari teks materi ini untuk mata pelajaran ${subject.name} siswa ${level} ${track||''}. Format JSON array, objek punya "question", "type" ("essay" atau "mcq"), jika mcq tambah "options" (array) & "correctAnswer". Materi: "${material.substring(0,6000)}"`;
+            const prompt = `Buat 5 pertanyaan (campuran esai & pilihan ganda 4 opsi) dari teks materi ini untuk mata pelajaran ${subject.name} siswa ${level} ${track||''}. Format JSON array, objek punya "question", "type" ("essay" atau "mcq"), jika mcq tambah "options" (array) & "correctAnswer". Pastikan correctAnswer ada di dalam options. Materi: "${material.substring(0,6000)}"`;
             const soalText = await callGeminiAPI(prompt, true);
-            setBankSoalQuestions(JSON.parse(soalText));
-            setScreen('bankSoalPlayer');
-        } catch (err) { setError('Gagal membuat soal. Coba materi yang lebih spesifik.'); } 
-        finally { setIsLoading(false); }
+            const parsedSoal = JSON.parse(soalText);
+            if (Array.isArray(parsedSoal)) {
+                 setBankSoalQuestions(parsedSoal);
+                 setScreen('bankSoalPlayer');
+            } else {
+                throw new Error("Format soal dari API tidak valid.");
+            }
+        } catch (err) { 
+            console.error(err);
+            setError('Gagal membuat soal. Coba materi yang lebih spesifik atau periksa koneksi.'); 
+        } finally { 
+            setIsLoading(false); 
+        }
     };
 
     return (
-        <div className="p-4 max-w-2xl mx-auto">
+        <div className="p-4 sm:p-6 max-w-2xl mx-auto">
             <Header onBack={() => setScreen('subjectDashboard')} title="Bank Soal Pribadi" />
             <div className="bg-white rounded-2xl shadow-lg p-6">
                 <h2 className="text-xl font-semibold text-gray-700 mb-2">Buat Soal dari Materimu</h2>
-                <p className="text-gray-600 mb-4">Tempel materi dari catatanmu di sini, dan AI akan membuatkan soal latihan.</p>
-                <textarea value={material} onChange={(e) => setMaterial(e.target.value)} placeholder="Contoh: Fotosintesis adalah proses tumbuhan mengubah cahaya matahari menjadi energi..." className="w-full h-64 p-3 border-2 border-gray-200 rounded-lg"/>
-                <button onClick={handleGenerate} disabled={isLoading} className="mt-4 w-full p-4 bg-green-600 text-white font-bold rounded-lg flex items-center justify-center disabled:bg-green-300">
+                <p className="text-gray-600 mb-4">Tempel materi dari catatanmu di sini, dan AI akan membuatkan soal latihan untukmu.</p>
+                <textarea 
+                    value={material} 
+                    onChange={(e) => setMaterial(e.target.value)} 
+                    placeholder="Contoh: Fotosintesis adalah proses tumbuhan mengubah cahaya matahari menjadi energi..." 
+                    className="w-full h-64 p-3 border-2 border-gray-200 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                />
+                <button 
+                    onClick={handleGenerate} 
+                    disabled={isLoading} 
+                    className="mt-4 w-full p-4 bg-green-600 text-white font-bold rounded-lg flex items-center justify-center disabled:bg-green-300 disabled:cursor-not-allowed"
+                >
                     {isLoading ? <Loader className="animate-spin mr-2"/> : <UploadCloud className="mr-2"/>}
                     {isLoading ? 'Membuat Soal...' : 'Buatkan Soal'}
                 </button>
@@ -569,50 +711,68 @@ const BankSoalGeneratorScreen = () => {
         </div>
     );
 };
+
 const BankSoalPlayerScreen = () => {
     const { bankSoalQuestions, setScreen } = useContext(AppContext);
     const [userAnswers, setUserAnswers] = useState({});
     const [isSubmitted, setSubmitted] = useState(false);
 
-    if(!bankSoalQuestions || bankSoalQuestions.length === 0) return <div className="p-4"><Header onBack={()=>setScreen('bankSoalGenerator')} title="Error"/><p>Tidak ada soal untuk ditampilkan. Silakan kembali dan buat soal baru.</p></div>
-
+    if(!bankSoalQuestions || bankSoalQuestions.length === 0) {
+        return (
+            <div className="p-4 sm:p-6 max-w-2xl mx-auto">
+                <Header onBack={()=>setScreen('bankSoalGenerator')} title="Error"/>
+                <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
+                    <p className="text-gray-600">Tidak ada soal untuk ditampilkan. Silakan kembali dan buat soal baru.</p>
+                    <button onClick={() => setScreen('bankSoalGenerator')} className="mt-6 w-full p-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">Kembali</button>
+                </div>
+            </div>
+        );
+    }
+    
     const mcqQuestions = bankSoalQuestions.filter(q => q.type === 'mcq');
     const score = mcqQuestions.reduce((acc, q) => acc + (userAnswers[q.question] === q.correctAnswer ? 1 : 0), 0);
     const scorePercentage = mcqQuestions.length > 0 ? Math.round((score / mcqQuestions.length) * 100) : 0;
     
     return (
-        <div className="p-4 max-w-2xl mx-auto">
+        <div className="p-4 sm:p-6 max-w-2xl mx-auto">
             <Header onBack={() => setScreen('bankSoalGenerator')} title="Latihan Soal" />
             <div className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
-                {isSubmitted && <h2 className="text-2xl font-bold text-center">Skor Pilihan Ganda: {scorePercentage}</h2>}
+                {isSubmitted && mcqQuestions.length > 0 && <h2 className="text-2xl font-bold text-center">Skor Pilihan Ganda: {scorePercentage}</h2>}
                 {bankSoalQuestions.map((q, qIndex) => (
                     <div key={qIndex}>
                         <p className="font-semibold text-gray-800 mb-3">{qIndex + 1}. {q.question}</p>
                         {q.type === 'mcq' ? (
                              <div className="space-y-2">
-                                {q.options.map((opt) => {
+                                {q.options.map((opt, optIndex) => {
                                     const isSelected = userAnswers[q.question] === opt;
-                                    let c = 'bg-white hover:bg-gray-50 border-gray-200';
+                                    let c = 'bg-white hover:bg-gray-100 border-gray-200';
                                     if(isSubmitted){ if(opt===q.correctAnswer) c='bg-green-100 border-green-500 font-bold'; else if(isSelected) c='bg-red-100 border-red-500';} 
                                     else if(isSelected) c='bg-blue-100 border-blue-500';
-                                    return (<button key={opt} onClick={()=>!isSubmitted && setUserAnswers(p=>({...p, [q.question]:opt}))} className={`w-full text-left p-3 rounded-lg border-2 transition ${c}`}> {opt} </button>);
+                                    return (<button key={optIndex} onClick={()=>!isSubmitted && setUserAnswers(p=>({...p, [q.question]:opt}))} className={`w-full text-left p-3 rounded-lg border-2 transition ${c}`}> {opt} </button>);
                                 })}
                             </div>
-                        ) : ( <textarea placeholder="Ketik jawaban esaimu..." disabled={isSubmitted} className="w-full p-2 border-2 rounded-lg mt-2"/> )}
+                        ) : ( 
+                            <textarea 
+                                placeholder="Ketik jawaban esaimu..." 
+                                disabled={isSubmitted} 
+                                className="w-full p-2 border-2 rounded-lg mt-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                            /> 
+                        )}
                         {isSubmitted && q.type === 'essay' && <p className="text-sm text-blue-700 italic mt-2">Periksa jawaban esaimu secara mandiri.</p>}
                     </div>
                 ))}
             </div>
-            {!isSubmitted && <button onClick={() => setSubmitted(true)} className="mt-6 w-full p-4 bg-green-600 text-white font-bold rounded-lg">Kumpulkan Jawaban</button>}
-            {isSubmitted && <button onClick={() => setScreen('bankSoalGenerator')} className="mt-6 w-full p-4 bg-blue-600 text-white font-bold rounded-lg">Buat Soal Lain</button>}
+            {!isSubmitted && <button onClick={() => setSubmitted(true)} className="mt-6 w-full p-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition">Kumpulkan Jawaban</button>}
+            {isSubmitted && <button onClick={() => setScreen('bankSoalGenerator')} className="mt-6 w-full p-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">Buat Soal Lain</button>}
         </div>
     )
 };
+
 const GeneralChatScreen = () => {
     const { setScreen } = useContext(AppContext);
     return (
-        <div className="p-0 md:p-4 h-screen">
-             <div className="h-full flex flex-col max-w-3xl mx-auto">
+        <div className="h-screen flex flex-col p-0 sm:p-4">
+             <div className="h-full flex flex-col max-w-3xl mx-auto bg-white sm:rounded-2xl shadow-lg">
                 <Header onBack={() => setScreen('subjectSelection')} title="Tanya Segalanya" />
                 <ChatModal topic="topik apa pun" subject="pengetahuan umum" onClose={() => setScreen('subjectSelection')} isPage={true} />
             </div>
@@ -621,40 +781,46 @@ const GeneralChatScreen = () => {
 };
 
 // --- UTILITY COMPONENTS ---
-const LoadingScreen = ({ message }) => (<div className="flex flex-col items-center justify-center min-h-screen bg-white"><Sparkles className="h-24 w-24 text-blue-500 animate-pulse" /><p className="mt-6 text-gray-700 font-semibold text-lg">{message || 'Memuat...'}</p></div>);
-const ErrorScreen = ({ message, onRetry }) => (<div className="flex flex-col items-center justify-center min-h-screen p-4 text-center"><X className="h-12 w-12 text-red-500 mx-auto" /><h2 className="mt-4 text-xl font-semibold text-gray-800">Oops, Terjadi Kesalahan!</h2><p className="text-gray-600 mt-2 max-w-sm">{message}</p><button onClick={onRetry} className="mt-6 px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg">Coba Lagi</button></div>);
-const Header = ({ onBack, title, icon }) => (<div className="flex items-center mb-6 px-4 pt-4 md:px-0 md:pt-0"><button onClick={onBack} className="p-2 rounded-full hover:bg-gray-200 mr-4"><ArrowLeft className="h-6 w-6 text-gray-600" /></button>{icon && <div className="mr-3">{icon}</div>}<div><h1 className="text-2xl font-bold text-gray-800 truncate" title={title}>{title}</h1></div></div>);
-const TabButton = ({ text, icon, active, onClick }) => (<button onClick={onClick} className={`flex-1 flex items-center justify-center p-3 font-semibold transition-colors ${active ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>{React.cloneElement(icon, { className: "mr-2 h-5 w-5"})} {text}</button>);
+const LoadingScreen = ({ message }) => (<div className="flex flex-col items-center justify-center min-h-screen bg-white"><Sparkles className="h-24 w-24 text-blue-500 animate-pulse" /><p className="mt-6 text-gray-700 font-semibold text-lg text-center px-4">{message || 'Memuat...'}</p></div>);
+
+const Header = ({ onBack, title, icon }) => (<div className="flex items-center mb-6 px-4 pt-4 shrink-0"><button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100 mr-2 sm:mr-4"><ArrowLeft className="h-6 w-6 text-gray-600" /></button>{icon && <div className="mr-3 hidden sm:block">{icon}</div>}<div className="flex-1 min-w-0"><h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate" title={title}>{title}</h1></div></div>);
+
+const TabButton = ({ text, icon, active, onClick }) => (<button onClick={onClick} className={`flex-1 flex items-center justify-center p-3 font-semibold transition-colors text-sm sm:text-base ${active ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>{React.cloneElement(icon, { className: "mr-2 h-5 w-5"})} {text}</button>);
+
 const ListItem = ({text, onClick}) => (<button onClick={onClick} className="w-full text-left p-4 bg-gray-50 hover:bg-blue-100 rounded-lg transition-colors font-medium text-gray-800 flex justify-between items-center"><span>{text}</span></button>);
+
 const ChatModal = ({ topic, subject, onClose, isPage=false }) => {
     const [history, setHistory] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const { setError } = useContext(AppContext);
 
     const handleSend = async () => {
-        if (!input.trim()) return;
+        if (!input.trim() || isLoading) return;
         const newHistory = [...history, { role: 'user', text: input }];
         setHistory(newHistory); setInput(''); setIsLoading(true);
         try {
             const prompt = `Anda "Bdukasi Expert". Jawab pertanyaan ini dalam konteks topik "${topic}" (${subject}). Pertanyaan: "${input}"`;
             const aiResponse = await callGeminiAPI(prompt);
             setHistory(prev => [...prev, { role: 'ai', text: aiResponse }]);
-        } catch (error) { setHistory(prev => [...prev, { role: 'ai', text: 'Maaf, ada gangguan saat menghubungi AI.' }]);
+        } catch (error) { 
+            setError("Gagal menghubungi AI. Coba lagi.");
+            setHistory(prev => prev.slice(0, -1)); // Hapus pertanyaan user jika gagal
         } finally { setIsLoading(false); }
     };
     
     const chatContainerClass = isPage 
-        ? "bg-white rounded-t-2xl shadow-xl w-full flex-1 flex flex-col"
+        ? "flex-1 flex flex-col overflow-hidden"
         : "bg-white rounded-2xl shadow-xl w-full max-w-lg h-[80vh] flex flex-col";
     
     const wrapperClass = isPage 
-        ? "flex-1 flex flex-col overflow-hidden" // Changed for page mode
+        ? "flex-1 flex flex-col overflow-hidden"
         : "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4";
 
     const chatUI = (
-        <div className={chatContainerClass} onClick={e => e.stopPropagation()}>
+        <div className={isPage ? 'h-full flex flex-col' : chatContainerClass} onClick={e => e.stopPropagation()}>
             {!isPage && (
-            <header className="p-4 border-b flex justify-between items-center">
+            <header className="p-4 border-b flex justify-between items-center shrink-0">
                 <h2 className="text-lg font-bold">Tanya Expert: {topic}</h2>
                 <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X/></button>
             </header>
@@ -663,15 +829,15 @@ const ChatModal = ({ topic, subject, onClose, isPage=false }) => {
                 <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm text-center">
                     Anda sedang bertanya kepada AI. Jawaban mungkin tidak selalu akurat.
                 </div>
-                {history.map((msg, i) => (<div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>{msg.role === 'ai' && <div className="flex-shrink-0 h-8 w-8 bg-gray-200 rounded-full flex items-center justify-center"><Sparkles className="h-5 w-5 text-purple-600" /></div>}<div className={`max-w-md p-3 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}><ContentRenderer text={msg.text}/></div></div>))}{isLoading && <div className="flex justify-start items-center gap-2 text-gray-500"><Loader className="animate-spin h-4 w-4" /><p>Mengetik...</p></div>}
+                {history.map((msg, i) => (<div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>{msg.role === 'ai' && <div className="flex-shrink-0 h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center"><Sparkles className="h-5 w-5 text-purple-600" /></div>}<div className={`max-w-prose p-3 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}><ContentRenderer text={msg.text}/></div></div>))}{isLoading && <div className="flex justify-start items-center gap-2 text-gray-500"><Loader className="animate-spin h-4 w-4" /><p>Mengetik...</p></div>}
             </main>
-            <footer className="p-4 border-t bg-white">
-                <div className="relative"><input type="text" value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSend()} placeholder="Tanya tentang topik ini..." className="w-full p-3 pr-14 rounded-xl border-gray-300 border" /><button onClick={handleSend} disabled={isLoading} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-purple-600 text-white disabled:bg-purple-300"><Sparkles className="h-5 w-5" /></button></div>
+            <footer className="p-4 border-t bg-white shrink-0">
+                <div className="relative"><input type="text" value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSend()} placeholder="Tanya tentang topik ini..." className="w-full p-3 pr-14 rounded-xl border-gray-300 border focus:ring-blue-500 focus:border-blue-500" /><button onClick={handleSend} disabled={isLoading} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-purple-600 text-white disabled:bg-purple-300 transition-colors"><Sparkles className="h-5 w-5" /></button></div>
             </footer>
         </div>
     );
 
-    if (isPage) return <div className={wrapperClass}>{chatUI}</div>;
+    if (isPage) return chatUI;
 
     return (<div className={wrapperClass} onClick={onClose}>{chatUI}</div>);
 };
