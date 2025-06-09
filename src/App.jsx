@@ -1,424 +1,424 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
+import React, { useState, useEffect, createContext, useContext, useCallback } from 'react';
+import { 
+    School, BrainCircuit, Lightbulb, FileText, ArrowLeft, Loader, Sparkles, 
+    History, UploadCloud, Youtube, Check, X, MessageSquarePlus, FlaskConical, Globe, 
+    Atom, Calculator, Dna, BarChart2, Drama, Computer, BookHeart, Landmark
+} from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
-// --- LANGKAH 1: KONFIGURASI FIREBASE ANDA ---
-// Pastikan konfigurasi ini sama persis dengan yang ada di Firebase Console Anda.
-const userFirebaseConfig = {
-    apiKey: "AIzaSyANQqaFwrsf3xGSDxyn9pcRJqJrIiHrjM0", 
-    authDomain: "bgune---community.firebaseapp.com",
-    projectId: "bgune---community",
-    storageBucket: "bgune---community.appspot.com",
-    messagingSenderId: "749511144215",
-    appId: "1:749511144215:web:dcf13c4d59dc705d4f7d52",
+// --- App Context for Centralized State Management ---
+const AppContext = createContext(null);
+
+// --- Curriculum Data ---
+const curriculum = {
+  'SD': { subjects: [ { name: 'Matematika', icon: <Calculator size={48} className="text-blue-500"/> }, { name: 'IPA', icon: <Atom size={48} className="text-green-500"/> }, { name: 'IPS', icon: <Globe size={48} className="text-orange-500"/> }, { name: 'Bahasa Indonesia', icon: <BookHeart size={48} className="text-red-500"/> }, { name: 'PPKn', icon: <Landmark size={48} className="text-yellow-500"/> } ] },
+  'SMP': { subjects: [ { name: 'Matematika', icon: <Calculator size={48} className="text-blue-500"/> }, { name: 'IPA Terpadu', icon: <FlaskConical size={48} className="text-green-500"/> }, { name: 'IPS Terpadu', icon: <Globe size={48} className="text-orange-500"/> }, { name: 'Bahasa Indonesia', icon: <BookHeart size={48} className="text-red-500"/> }, { name: 'Bahasa Inggris', icon: <Drama size={48} className="text-purple-500"/> }, { name: 'Informatika', icon: <Computer size={48} className="text-gray-600"/> } ] },
+  'SMA': { tracks: { 'IPA': [ { name: 'Matematika Peminatan', icon: <Calculator size={48} className="text-blue-500"/> }, { name: 'Fisika', icon: <Atom size={48} className="text-sky-500"/> }, { name: 'Kimia', icon: <FlaskConical size={48} className="text-green-500"/> }, { name: 'Biologi', icon: <Dna size={48} className="text-teal-500"/> } ], 'IPS': [ { name: 'Ekonomi', icon: <BarChart2 size={48} className="text-indigo-500"/> }, { name: 'Geografi', icon: <Globe size={48} className="text-orange-500"/> }, { name: 'Sosiologi', icon: <School size={48} className="text-rose-500"/> }, { name: 'Sejarah', icon: <History size={48} className="text-amber-700"/> } ] } }
 };
 
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
+// --- API Helper Functions ---
+const callGeminiAPI = async (prompt, isJson = false) => {
+    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+    if (isJson) payload.generationConfig = { responseMimeType: "application/json" };
+    const apiKey = "AIzaSyArJ1P8HanSQ_XVWX9m4kUlsIVXrBRInik";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!response.ok) throw new Error(`Gemini API call failed: ${response.status}`);
+    const result = await response.json();
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error("Invalid Gemini API response");
+    return text;
+};
 
-// --- LANGKAH 2: KONFIGURASI API KEY LAINNYA ---
-// Pastikan API Key ini sudah diaktifkan API-nya (YouTube & Gemini) dan tidak ada pembatasan yang salah.
-const GEMINI_API_KEY = "AIzaSyArJ1P8HanSQ_XVWX9m4kUlsIVXrBRInik";
-const YOUTUBE_API_KEY = "AIzaSyD9Rp-oSegoIDr8q9XlKkqpEL64lB2bQVE";
+// --- NEW IMAGE API FUNCTION ---
+const callDeepImgAPI = async (prompt) => {
+    const apiUrl = 'https://api-preview.chatgot.io/api/v1/deepimg/flux-1-dev';
+    const payload = { prompt };
+    const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+        throw new Error(`DeepImg API call failed: ${response.status}`);
+    }
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+};
 
+// --- Custom Hook for Local Storage ---
+function useLocalStorage(key, initialValue) {
+    const [storedValue, setStoredValue] = useState(() => {
+        try {
+            const item = window.localStorage.getItem(key);
+            return item ? JSON.parse(item) : initialValue;
+        } catch (error) { return initialValue; }
+    });
+    const setValue = (value) => {
+        try {
+            const valueToStore = value instanceof Function ? value(storedValue) : value;
+            setStoredValue(valueToStore);
+            window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) { console.error(error); }
+    };
+    return [storedValue, setValue];
+}
 
-// --- Komponen Ikon (Lucide-React style SVGs) ---
-const BookOpen = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> );
-const Video = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg> );
-const FileQuestion = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M10 10.3c.2-.4.5-.8.9-1a2.1 2.1 0 0 1 2.6.4c.3.4.5.8.5 1.3 0 1.3-2 2-2 2"/><path d="M12 17h.01"/></svg> );
-const LogOut = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg> );
-const GoogleIcon = () => ( <svg className="w-5 h-5 mr-3" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C41.38,36.783,44,30.825,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg> );
-const LoaderCircle = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> );
+// --- App Provider Component ---
+const AppProvider = ({ children }) => {
+    const [screen, setScreen] = useState('levelSelection');
+    const [level, setLevel] = useState('');
+    const [track, setTrack] = useState('');
+    const [subject, setSubject] = useState(null);
+    const [topic, setTopic] = useState('');
+    const [lessonContent, setLessonContent] = useState(null);
+    const [bankSoalQuestions, setBankSoalQuestions] = useState([]);
+    const [history, setHistory] = useLocalStorage('bdukasiHistory_v13', []);
+    const [error, setError] = useState('');
 
-// --- Komponen Utama Aplikasi ---
-export default function App() {
-    const [user, setUser] = useState(null);
-    const [auth, setAuth] = useState(null);
-    const [isAuthReady, setIsAuthReady] = useState(false);
-
-    useEffect(() => {
-        if (firebaseConfig.apiKey.includes("MASUKKAN")) return;
-        const app = initializeApp(firebaseConfig);
-        const authInstance = getAuth(app);
-        setAuth(authInstance);
-
-        const unsubscribe = onAuthStateChanged(authInstance, (currentUser) => {
-            setUser(currentUser);
-            setIsAuthReady(true);
-        });
-        return () => unsubscribe();
+    const updateHistory = useCallback((newEntry) => {
+        setHistory(prev => [newEntry, ...prev.filter(h => h.topic !== newEntry.topic)].slice(0, 50));
+    }, [setHistory]);
+    
+    const handleGlobalError = useCallback((message) => {
+        setError(message || "Terjadi kesalahan yang tidak diketahui.");
     }, []);
 
-    const handleLogin = () => {
-        if (!auth) {
-             alert("Konfigurasi Firebase belum diisi dengan benar.");
-             return;
-        }
-        const provider = new GoogleAuthProvider();
-        signInWithPopup(auth, provider).catch((error) => console.error("Error saat login:", error));
-    };
+    const value = { screen, setScreen, level, setLevel, track, setTrack, subject, setSubject, topic, setTopic, lessonContent, setLessonContent, bankSoalQuestions, setBankSoalQuestions, history, updateHistory, error, setError: handleGlobalError };
+    return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+};
 
-    const handleLogout = () => {
-        if (!auth) return;
-        signOut(auth).catch((error) => console.error("Error saat logout:", error));
-    };
-
-    if (firebaseConfig.apiKey.includes("MASUKKAN")) {
-        return <ConfigWarningScreen />;
-    }
-
-    if (!isAuthReady) {
-        return <LoadingScreen message="Menyiapkan sesi..." />;
-    }
-
-    return (
-        <div className="bg-gray-100 min-h-screen font-sans">
-            {user ? (
-                <Dashboard user={user} onLogout={handleLogout} />
-            ) : (
-                <LoginScreen onLogin={handleLogin} />
-            )}
-        </div>
-    );
+// --- Main App Component ---
+export default function App() {
+    return <AppProvider><Main /></AppProvider>;
 }
 
-// --- Komponen Halaman dan Tampilan ---
+const Main = () => {
+    const { screen, error, setError, setScreen } = useContext(AppContext);
+    
+    const renderScreen = () => {
+        if (error) return <ErrorScreen message={error} onRetry={() => { setError(''); setScreen('levelSelection'); }} />;
+        switch (screen) {
+            case 'levelSelection': return <LevelSelectionScreen />;
+            case 'trackSelection': return <TrackSelectionScreen />;
+            case 'subjectSelection': return <SubjectSelectionScreen />;
+            case 'subjectDashboard': return <SubjectDashboardScreen />;
+            case 'lesson': return <LessonScreen />;
+            case 'quiz': return <QuizPlayerScreen />;
+            case 'bankSoalGenerator': return <BankSoalGeneratorScreen />;
+            case 'bankSoalPlayer': return <BankSoalPlayerScreen />;
+            default: return <LevelSelectionScreen />;
+        }
+    };
+    return <div className="bg-gray-100 min-h-screen font-sans antialiased">{renderScreen()}</div>;
+};
 
-function LoginScreen({ onLogin }) {
+// --- Custom Renderer for Math using External Service ---
+const ContentRenderer = ({ text }) => {
+    if (!text) return <p className="text-gray-500">Materi tidak tersedia.</p>;
+    const parts = text.split('$$');
     return (
-        <div className="flex items-center justify-center min-h-screen">
-            <div className="w-full max-w-sm mx-auto overflow-hidden bg-white rounded-lg shadow-md">
-                <div className="px-6 py-8">
-                    <h2 className="text-3xl font-bold text-center text-gray-700">Bdukasi</h2>
-                    <p className="mt-1 text-center text-gray-500">Selamat Datang Kembali</p>
-                    <p className="mt-4 text-center text-sm text-gray-600">Platform belajar modern untuk siswa Indonesia. Masuk untuk melanjutkan.</p>
-                    <div className="mt-8">
-                        <button onClick={onLogin} className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 transition-colors duration-300 transform border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none">
-                            <GoogleIcon />
-                            <span>Masuk dengan Google</span>
-                        </button>
-                    </div>
+        <div className="prose prose-lg max-w-none">
+            {parts.map((part, index) => {
+                if (index % 2 === 0) {
+                    return <ReactMarkdown key={index}>{part}</ReactMarkdown>;
+                } else {
+                    if (part.trim() === '') return null;
+                    const encodedLatex = encodeURIComponent(part);
+                    return (<div key={index} className="flex justify-center my-4 overflow-x-auto p-2 bg-gray-100 rounded"><img src={`https://latex.codecogs.com/svg.latex?${encodedLatex}`} alt={`Rumus: ${part}`} className="max-w-full h-auto" /></div>);
+                }
+            })}
+        </div>
+    );
+};
+
+// --- Screens ---
+const LevelSelectionScreen = () => {
+    const { setScreen, setLevel } = useContext(AppContext);
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-white">
+            <Sparkles className="mx-auto text-blue-600 h-20 w-20" />
+            <h1 className="text-4xl font-bold text-gray-800 mt-4 text-center">Bdukasi Expert</h1>
+            <p className="text-gray-600 mt-2 mb-8 text-center max-w-md">Platform Belajar Cerdas Kurikulum Merdeka</p>
+            <div className="w-full max-w-xs space-y-4">
+                {Object.keys(curriculum).map(lvl => (<button key={lvl} onClick={() => { setLevel(lvl); setScreen(lvl === 'SMA' ? 'trackSelection' : 'subjectSelection'); }} className="w-full p-5 bg-blue-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-lg flex items-center justify-center"> <School className="mr-3" /> {lvl} </button>))}
+            </div>
+        </div>
+    );
+};
+const TrackSelectionScreen = () => {
+    const { setScreen, setTrack } = useContext(AppContext);
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4">
+            <Header onBack={() => setScreen('levelSelection')} title="Pilih Jurusan SMA" />
+            <div className="w-full max-w-xs space-y-4">
+                <button onClick={() => { setTrack('IPA'); setScreen('subjectSelection'); }} className="w-full p-5 bg-green-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-lg flex items-center justify-center"> <FlaskConical className="mr-3" /> IPA </button>
+                <button onClick={() => { setTrack('IPS'); setScreen('subjectSelection'); }} className="w-full p-5 bg-yellow-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-lg flex items-center justify-center"> <Globe className="mr-3" /> IPS </button>
+            </div>
+        </div>
+    );
+};
+const SubjectSelectionScreen = () => {
+    const { level, track, setScreen, setSubject } = useContext(AppContext);
+    const subjects = level === 'SMA' ? curriculum.SMA.tracks[track] : curriculum[level].subjects;
+    const backScreen = level === 'SMA' ? 'trackSelection' : 'levelSelection';
+
+    return (
+        <div className="p-4 max-w-4xl mx-auto">
+            <Header onBack={() => setScreen(backScreen)} title={`Pelajaran ${level} ${track || ''}`} />
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {subjects.map((s) => (<button key={s.name} onClick={() => { setSubject(s); setScreen('subjectDashboard'); }} className="p-4 bg-gray-50 hover:bg-blue-100 rounded-xl flex flex-col items-center justify-center text-center transition-transform transform hover:scale-105 aspect-square"> {s.icon} <span className="font-semibold text-gray-700 text-center mt-3">{s.name}</span> </button>))}
                 </div>
             </div>
         </div>
     );
-}
-
-function Dashboard({ user, onLogout }) {
-    const [kelas, setKelas] = useState('');
-    
-    if (!kelas) {
-        return <ClassSelector user={user} onLogout={onLogout} onSelect={setKelas} />;
-    }
-    
-    return <MainInterface user={user} onLogout={onLogout} selectedClass={kelas} />;
-}
-
-function ClassSelector({ user, onLogout, onSelect }) {
-     const classes = ["1 SD", "2 SD", "3 SD", "4 SD", "5 SD", "6 SD", "7 SMP", "8 SMP", "9 SMP", "10 SMA", "11 SMA", "12 SMA"];
+};
+const SubjectDashboardScreen = () => {
+    const { subject, setScreen } = useContext(AppContext);
+    const [activeTab, setActiveTab] = useState('rekomendasi');
     return (
-        <div className="flex items-center justify-center min-h-screen">
-            <div className="w-full max-w-2xl p-8 bg-white rounded-xl shadow-lg text-center">
-                 <img src={user.photoURL} alt={user.displayName} className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-white shadow-md"/>
-                 <h2 className="text-3xl font-bold text-gray-800">Halo, {user.displayName}!</h2>
-                 <p className="text-gray-500 mt-2 mb-8">Pilih jenjang kelasmu untuk personalisasi materi.</p>
-                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
-                     {classes.map(c => (
-                         <button key={c} onClick={() => onSelect(c.split(' ')[0])} className="p-4 bg-gray-50 rounded-lg text-gray-700 font-semibold hover:bg-indigo-100 hover:text-indigo-700 transform hover:scale-105 transition-all duration-200">
-                             {c}
-                         </button>
-                     ))}
-                 </div>
-                 <button onClick={onLogout} className="mt-8 text-sm text-gray-400 hover:text-red-500">Bukan Anda? Logout</button>
+        <div className="p-4 max-w-3xl mx-auto">
+            <Header onBack={() => setScreen('subjectSelection')} title={subject.name} icon={React.cloneElement(subject.icon, { size: 32 })} />
+            <SearchTopic />
+            <div className="bg-white rounded-2xl shadow-lg p-2">
+                <div className="flex border-b">
+                    <TabButton text="Rekomendasi" icon={<Lightbulb/>} active={activeTab==='rekomendasi'} onClick={() => setActiveTab('rekomendasi')} />
+                    <TabButton text="Riwayat" icon={<History/>} active={activeTab==='riwayat'} onClick={() => setActiveTab('riwayat')} />
+                    <TabButton text="Bank Soal" icon={<BrainCircuit/>} active={activeTab==='bank_soal'} onClick={() => setScreen('bankSoalGenerator')} />
+                </div>
+                <div className="p-4 min-h-[200px]">
+                    {activeTab === 'rekomendasi' && <RecommendationTab />}
+                    {activeTab === 'riwayat' && <HistoryTab />}
+                </div>
             </div>
         </div>
     );
-}
+};
 
-function MainInterface({ user, onLogout, selectedClass }) {
-    const [activeTab, setActiveTab] = useState('materi');
-
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'video': return <VideoSearch selectedClass={selectedClass} />;
-            case 'soal': return <QuizGenerator selectedClass={selectedClass} />;
-            case 'materi':
-            default:
-                return <MaterialGenerator selectedClass={selectedClass} />;
-        }
-    };
-    
-    const tabs = [
-        { id: 'materi', label: 'Materi Pelajaran', icon: BookOpen },
-        { id: 'video', label: 'Video Pembelajaran', icon: Video },
-        { id: 'soal', label: 'Latihan Soal', icon: FileQuestion }
-    ];
-
+const SearchTopic = () => {
+    const { setTopic, setScreen } = useContext(AppContext);
+    const [searchTerm, setSearchTerm] = useState('');
+    const handleSearch = () => { if (searchTerm.trim()) { setTopic(searchTerm); setScreen('lesson'); } };
     return (
-        <div>
-            {/* Navbar */}
-            <nav className="bg-white shadow-md sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16">
-                        <div className="flex items-center">
-                            <span className="font-bold text-2xl text-indigo-600">Bdukasi</span>
-                             <span className="ml-4 bg-indigo-100 text-indigo-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">Kelas {selectedClass}</span>
-                        </div>
-                        <div className="flex items-center">
-                            <span className="text-gray-600 mr-4 hidden sm:block">Halo, {user.displayName.split(' ')[0]}!</span>
-                            <img className="h-8 w-8 rounded-full" src={user.photoURL} alt="User avatar" />
-                            <button onClick={onLogout} className="ml-4 text-gray-500 hover:text-indigo-600" title="Logout">
-                                <LogOut className="h-6 w-6"/>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </nav>
-
-            {/* Content Area */}
-            <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                {/* Tabs */}
-                <div className="mb-6">
-                    <div className="sm:hidden">
-                        <select onChange={(e) => setActiveTab(e.target.value)} value={activeTab} className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                            {tabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
-                        </select>
-                    </div>
-                    <div className="hidden sm:block">
-                        <div className="border-b border-gray-200">
-                            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                                {tabs.map(tab => (
-                                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`${activeTab === tab.id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}>
-                                        <tab.icon className="-ml-0.5 mr-2 h-5 w-5" />
-                                        {tab.label}
-                                    </button>
-                                ))}
-                            </nav>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Tab Content */}
-                <div className="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
-                    {renderContent()}
-                </div>
-            </main>
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-700 mb-2">Mau belajar apa hari ini?</h2>
+            <div className="flex">
+                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSearch()} placeholder="Cari topik spesifik..." className="w-full p-3 border-2 border-gray-200 rounded-l-lg"/>
+                <button onClick={handleSearch} className="p-3 bg-blue-500 text-white rounded-r-lg font-semibold">Cari</button>
+            </div>
         </div>
     );
-}
+};
 
-// --- Komponen Fitur (Tabs) ---
-
-function MaterialGenerator({ selectedClass }) {
-    const [topic, setTopic] = useState('');
-    const [material, setMaterial] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!topic.trim()) return;
+const RecommendationTab = () => {
+    const { level, track, subject, setTopic, setScreen } = useContext(AppContext);
+    const [topics, setTopics] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    useEffect(() => {
         setIsLoading(true);
-        setMaterial('');
+        const prompt = `Berdasarkan Kurikulum Merdeka, buatkan 5 rekomendasi topik utama untuk mata pelajaran "${subject.name}" bagi siswa ${level} ${track ? `jurusan ${track}` : ''}. Jawab dalam format JSON array string.`;
+        callGeminiAPI(prompt, true)
+            .then(responseText => setTopics(JSON.parse(responseText)))
+            .catch(console.error)
+            .finally(() => setIsLoading(false));
+    }, [level, track, subject.name]);
+    const openLesson = (topicStr) => { setTopic(topicStr); setScreen('lesson'); };
+    if (isLoading) return <div className="text-center p-8"><Loader className="mx-auto animate-spin text-blue-500"/></div>;
+    return <div className="space-y-3">{topics.map((topic, i) => <ListItem key={i} text={topic} onClick={() => openLesson(topic)} />)}</div>;
+};
+const HistoryTab = () => {
+    const { level, track, subject, history, setTopic, setScreen } = useContext(AppContext);
+    const filteredHistory = history.filter(h => h.subject === subject.name && h.level === level && h.track === track);
+    const openLesson = (topicStr) => { setTopic(topicStr); setScreen('lesson'); };
+    if (filteredHistory.length === 0) return <p className="text-center p-5 text-gray-500">Belum ada riwayat belajar.</p>;
+    return <div className="space-y-3">{filteredHistory.map((h, i) => <ListItem key={i} text={h.topic} onClick={() => openLesson(h.topic)} />)}</div>;
+};
+const LessonScreen = () => {
+    const { topic, level, track, subject, setScreen, setLessonContent, updateHistory, setError } = useContext(AppContext);
+    const [content, setContent] = useState({ text: null, imageUrl: null, video: null });
+    const [isChatOpen, setChatOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
-        try {
-            const prompt = `Sebagai seorang guru ahli, jelaskan topik "${topic}" untuk siswa kelas ${selectedClass} dengan cara yang sangat menarik, jelas, dan mudah dipahami. Gunakan analogi sederhana dan poin-poin. Format jawabanmu menggunakan Markdown (gunakan heading, bold, dan list).`;
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-            });
-            if (!response.ok) throw new Error("Gagal mengambil data dari Gemini API.");
-            const data = await response.json();
-            setMaterial(data.candidates[0].content.parts[0].text);
-        } catch (error) {
-            console.error(error);
-            setMaterial("Maaf, terjadi kesalahan saat membuat materi. Coba lagi ya.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    
-    // Simple Markdown to HTML renderer
-    const renderMarkdown = (text) => {
-        let html = text
-            .replace(/^### (.*$)/gim, '<h3 class="text-xl font-bold mt-4 mb-2">$1</h3>')
-            .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold mt-6 mb-3 border-b pb-2">$1</h2>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/^\s*[\*-] (.*$)/gim, '<li class="ml-5 list-disc">$1</li>');
-        return { __html: html };
-    };
+    const stableUpdateHistory = useCallback(updateHistory, []);
+    const stableSetLessonContent = useCallback(setLessonContent, []);
+    const stableSetError = useCallback(setError, []);
+
+    useEffect(() => {
+        if(!topic) { setScreen('subjectDashboard'); return; }
+        let isMounted = true;
+        const fetchContent = async () => {
+            if(!isMounted) return;
+            setIsLoading(true);
+            stableUpdateHistory({ level, track, subject: subject.name, topic, date: new Date().toISOString() });
+            const fullContext = `${subject.name} untuk siswa ${level} ${track ? `jurusan ${track}` : ''}`;
+            const textPrompt = `Sebagai guru ahli, buatkan materi lengkap tentang "${topic}" (${fullContext}) sesuai Kurikulum Merdeka. Gunakan format Markdown (heading, list, bold). Untuk RUMUS MATEMATIKA, WAJIB gunakan delimiter $$...$$ (contoh: $$L = \\pi r^2$$).`;
+            const imagePrompt = `Educational illustration, simple colorful flat design style, topic: "${topic}" for ${fullContext}.`;
+            const videoPrompt = `Cari satu video YouTube berbahasa Indonesia paling relevan untuk menjelaskan "${topic}" (${fullContext}). Jawab HANYA dalam format JSON dengan key "title" dan "youtubeId".`;
+            try {
+                const results = await Promise.allSettled([ callGeminiAPI(textPrompt), callDeepImgAPI(imagePrompt), callGeminiAPI(videoPrompt, true) ]);
+                if(!isMounted) return;
+                const lessonText = results[0].status === 'fulfilled' ? results[0].value : 'Gagal memuat materi teks.';
+                const imageUrl = results[1].status === 'fulfilled' ? results[1].value : null;
+                const videoJson = results[2].status === 'fulfilled' ? JSON.parse(results[2].value) : null;
+                setContent({ text: lessonText, imageUrl, video: videoJson });
+                stableSetLessonContent(lessonText);
+            } catch (err) { stableSetError('Gagal memuat sebagian konten.'); } 
+            finally { if(isMounted) setIsLoading(false); }
+        };
+        fetchContent();
+        return () => { isMounted = false; };
+    }, [topic, level, track, subject, stableSetLessonContent, stableUpdateHistory, stableSetError, setScreen]);
 
     return (
-        <div>
-            <h2 className="text-2xl font-bold text-gray-800">Materi Pelajaran</h2>
-            <p className="mt-1 text-gray-500">Ketik topik yang ingin kamu pelajari di bawah ini.</p>
-            <form onSubmit={handleSubmit} className="mt-6 flex gap-2">
-                <input
-                    type="text"
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    placeholder="Contoh: Proses terjadinya hujan"
-                    className="flex-grow p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    disabled={isLoading}
-                />
-                <button type="submit" className="bg-indigo-600 text-white px-6 py-3 rounded-md font-semibold hover:bg-indigo-700 disabled:bg-indigo-300 transition-colors" disabled={isLoading}>
-                    {isLoading ? <LoaderCircle className="animate-spin h-5 w-5" /> : 'Buat Materi'}
-                </button>
-            </form>
-            <div className="mt-8 prose max-w-none">
-                {isLoading && <p>Sedang membuat materi, mohon tunggu...</p>}
-                {material && <div dangerouslySetInnerHTML={renderMarkdown(material)} />}
+        <div className="relative min-h-screen">
+            <div className="p-4 max-w-3xl mx-auto pb-24">
+                <Header onBack={() => setScreen('subjectDashboard')} title={topic} />
+                {isLoading ? <div className="bg-white rounded-2xl shadow-lg p-10 text-center"><Loader className="mx-auto animate-spin text-blue-500" size={48} /><p className="mt-4 font-semibold">Membuat materi lengkap...</p></div> : 
+                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <img src={content.imageUrl || `https://placehold.co/1200x600/e2e8f0/4a5568?text=Ilustrasi+Gagal+Dimuat`} alt={`Ilustrasi untuk ${topic}`} className="w-full h-48 md:h-64 object-cover bg-gray-200"/>
+                    <div className="p-6">
+                        <ContentRenderer text={content.text} />
+                        {content.video && content.video.youtubeId && (<div className="mt-8"><h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center"><Youtube className="text-red-500 mr-2"/> Video Pembelajaran</h2><div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden shadow-lg"><iframe className="w-full h-full" src={`https://www.youtube.com/embed/${content.video.youtubeId}`} title={content.video.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe></div></div>)}
+                        <button onClick={() => setScreen('quiz')} className="mt-8 w-full p-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"> Uji Pemahaman </button>
+                    </div>
+                </div>}
             </div>
+            <button onClick={() => setChatOpen(true)} className="fixed bottom-6 right-6 p-4 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700"> <MessageSquarePlus /> </button>
+            {isChatOpen && <ChatModal topic={topic} subject={subject.name} onClose={() => setChatOpen(false)} />}
         </div>
     );
-}
-
-function VideoSearch() {
-    const [query, setQuery] = useState('');
-    const [videos, setVideos] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [selectedVideoId, setSelectedVideoId] = useState(null);
-
-    const handleSearch = async (e) => {
-        e.preventDefault();
-        if (!query.trim()) return;
+};
+const QuizPlayerScreen = () => {
+    const { lessonContent, level, track, setScreen, setError } = useContext(AppContext);
+    const [quiz, setQuiz] = useState([]);
+    const [userAnswers, setUserAnswers] = useState({});
+    const [isSubmitted, setSubmitted] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    useEffect(() => {
+        if(!lessonContent) { setError("Konten materi tidak ditemukan untuk membuat kuis."); setScreen('subjectDashboard'); return; }
         setIsLoading(true);
-        setVideos([]);
-        setSelectedVideoId(null);
-        
-        try {
-            const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${encodeURIComponent(query)}&type=video&key=${YOUTUBE_API_KEY}`);
-            if (!response.ok) throw new Error('Gagal mengambil data dari YouTube API.');
-            const data = await response.json();
-            setVideos(data.items);
-        } catch(error) {
-            console.error(error);
-            alert("Terjadi kesalahan saat mencari video. Pastikan API Key YouTube Anda valid.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    
+        const prompt = `Buat 4 pertanyaan kuis pilihan ganda (A, B, C, D) dari materi ini, target siswa ${level} ${track||''}: "${lessonContent.substring(0,6000)}". Kembalikan dalam format JSON array. Objek: "question", "options" (array), dan "correctAnswer".`;
+        callGeminiAPI(prompt, true)
+            .then(quizText => setQuiz(JSON.parse(quizText)))
+            .catch(() => setError('Gagal membuat kuis.'))
+            .finally(() => setIsLoading(false));
+    }, [lessonContent, level, track, setError, setScreen]);
+    const score = quiz.reduce((acc, q, i) => acc + (userAnswers[i] === q.correctAnswer ? 1 : 0), 0);
+    const scorePercentage = quiz.length > 0 ? Math.round(score/quiz.length * 100) : 0;
+    if (isLoading) return <div className="p-4 max-w-2xl mx-auto"><Header onBack={() => setScreen('lesson')} title="Uji Pemahaman" /><div className="bg-white rounded-2xl shadow-lg p-10 text-center"><Loader className="mx-auto animate-spin text-blue-500" size={48} /><p className="mt-4 font-semibold">Membuat soal kuis...</p></div></div>;
     return (
-        <div>
-             <h2 className="text-2xl font-bold text-gray-800">Video Pembelajaran</h2>
-            <p className="mt-1 text-gray-500">Cari video dari YouTube untuk membantumu belajar.</p>
-             <form onSubmit={handleSearch} className="mt-6 flex gap-2">
-                <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Contoh: Tata Surya untuk anak SD" className="flex-grow p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none" disabled={isLoading}/>
-                <button type="submit" className="bg-indigo-600 text-white px-6 py-3 rounded-md font-semibold hover:bg-indigo-700 disabled:bg-indigo-300 transition-colors" disabled={isLoading}>
-                    {isLoading ? <LoaderCircle className="animate-spin h-5 w-5" /> : 'Cari Video'}
-                </button>
-            </form>
-
-            {selectedVideoId && (
-                <div className="mt-8">
-                    <div className="aspect-w-16 aspect-h-9">
-                        <iframe className="w-full h-full rounded-lg shadow-lg" src={`https://www.youtube.com/embed/${selectedVideoId}`} title="YouTube video player" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
-                    </div>
-                </div>
-            )}
-            
-            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                 {isLoading && <p>Mencari video...</p>}
-                {videos.map(video => (
-                    <div key={video.id.videoId} onClick={() => setSelectedVideoId(video.id.videoId)} className="cursor-pointer bg-gray-50 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300">
-                        <img src={video.snippet.thumbnails.high.url} alt={video.snippet.title} className="w-full h-40 object-cover" />
-                        <div className="p-4">
-                            <h3 className="font-semibold text-gray-800 line-clamp-2">{video.snippet.title}</h3>
-                            <p className="text-sm text-gray-500 mt-1">{video.snippet.channelTitle}</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-function QuizGenerator({ selectedClass }) {
-    const [topic, setTopic] = useState('');
-    const [questions, setQuestions] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [answers, setAnswers] = useState({});
-
-    const handleGenerate = async (e) => {
-        e.preventDefault();
-        if (!topic.trim()) return;
-        setIsLoading(true);
-        setQuestions([]);
-        setAnswers({});
-
-        try {
-            const prompt = `Buatkan 5 soal latihan pilihan ganda (A, B, C, D) tentang topik "${topic}" untuk siswa kelas ${selectedClass}. Sertakan kunci jawabannya. Format jawabanmu sebagai JSON dengan struktur: { "questions": [ { "question": "...", "options": ["...", "...", "...", "..."], "answer": "..." } ] }`;
-            
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
-            });
-            if (!response.ok) throw new Error("Gagal mengambil data dari Gemini API.");
-            const data = await response.json();
-            const quizData = JSON.parse(data.candidates[0].content.parts[0].text);
-            setQuestions(quizData.questions);
-        } catch (error) {
-            console.error(error);
-            alert("Gagal membuat soal. Pastikan API Key Gemini Anda valid dan mendukung format JSON.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    
-    const handleAnswerSelect = (qIndex, option) => {
-        setAnswers(prev => ({ ...prev, [qIndex]: option }));
-    };
-
-    return (
-        <div>
-             <h2 className="text-2xl font-bold text-gray-800">Latihan Soal</h2>
-            <p className="mt-1 text-gray-500">Uji pemahamanmu dengan mengerjakan soal-soal di bawah ini.</p>
-             <form onSubmit={handleGenerate} className="mt-6 flex gap-2">
-                <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Contoh: Pecahan Matematika" className="flex-grow p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none" disabled={isLoading}/>
-                <button type="submit" className="bg-indigo-600 text-white px-6 py-3 rounded-md font-semibold hover:bg-indigo-700 disabled:bg-indigo-300 transition-colors" disabled={isLoading}>
-                    {isLoading ? <LoaderCircle className="animate-spin h-5 w-5" /> : 'Buat Soal'}
-                </button>
-            </form>
-            
-            <div className="mt-8 space-y-6">
-                {isLoading && <p>Sedang membuat soal, mohon tunggu...</p>}
-                {questions.map((q, qIndex) => (
-                    <div key={qIndex} className="bg-gray-50 p-6 rounded-lg border">
-                        <p className="font-semibold text-lg text-gray-800">{qIndex + 1}. {q.question}</p>
-                        <div className="mt-4 space-y-2">
-                            {q.options.map((opt, oIndex) => {
-                                const isSelected = answers[qIndex] === opt;
-                                const isCorrect = q.answer === opt;
-                                let buttonClass = 'text-left w-full p-3 border rounded-md hover:bg-gray-200 transition-colors';
-                                if (isSelected && answers.hasOwnProperty(qIndex)) {
-                                    buttonClass += isCorrect ? ' bg-green-100 border-green-400 text-green-800' : ' bg-red-100 border-red-400 text-red-800';
-                                } else {
-                                    buttonClass += ' bg-white border-gray-300';
-                                }
-
-                                return <button key={oIndex} onClick={() => handleAnswerSelect(qIndex, opt)} className={buttonClass}>{opt}</button>
+        <div className="p-4 max-w-2xl mx-auto">
+            <Header onBack={() => setScreen('lesson')} title="Uji Pemahaman" />
+            <div className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
+                {isSubmitted && <div className="text-center p-4 rounded-lg bg-blue-50"><h2 className="text-2xl font-bold">Skor Kamu</h2><p className="text-5xl font-bold text-blue-600 my-2">{scorePercentage}</p><p className="text-gray-600">Kamu benar {score} dari {quiz.length} pertanyaan.</p></div>}
+                {quiz.map((q, qIndex) => (
+                    <div key={qIndex}>
+                        <p className="font-semibold text-gray-800 mb-3">{qIndex + 1}. {q.question}</p>
+                        <div className="space-y-2">
+                            {q.options.map((opt) => {
+                                const isSelected = userAnswers[qIndex] === opt;
+                                let c = 'bg-white hover:bg-gray-50 border-gray-200';
+                                if(isSubmitted){ if(opt===q.correctAnswer) c='bg-green-100 border-green-500 text-green-800 font-bold'; else if(isSelected) c='bg-red-100 border-red-500 text-red-800';} 
+                                else if(isSelected) c='bg-blue-100 border-blue-500';
+                                return (<button key={opt} onClick={()=>!isSubmitted && setUserAnswers(p=>({...p,[qIndex]:opt}))} className={`w-full text-left p-3 rounded-lg border-2 transition ${c}`}> {opt} </button>);
                             })}
                         </div>
                     </div>
                 ))}
             </div>
+            {!isSubmitted && quiz.length > 0 && <button onClick={() => setSubmitted(true)} disabled={Object.keys(userAnswers).length !== quiz.length} className="mt-6 w-full p-4 bg-green-600 text-white font-bold rounded-lg disabled:bg-gray-400">Kumpulkan Jawaban</button>}
+            {isSubmitted && <button onClick={() => setScreen('lesson')} className="mt-6 w-full p-4 bg-blue-600 text-white font-bold rounded-lg">Kembali ke Materi</button>}
         </div>
     );
-}
-
-function LoadingScreen({ message }) {
-    return <div className="flex items-center justify-center h-screen bg-gray-100"><p>{message}</p></div>;
-}
-function ConfigWarningScreen() {
+};
+const BankSoalGeneratorScreen = () => {
+    const { level, track, setScreen, setError, setBankSoalQuestions } = useContext(AppContext);
+    const [material, setMaterial] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const handleGenerate = async () => {
+        if (!material.trim()) return;
+        setIsLoading(true);
+        try {
+            const prompt = `Buat 5 pertanyaan (campuran esai & pilihan ganda 4 opsi) dari teks materi ini untuk siswa ${level} ${track||''}. Format JSON array, objek punya "question", "type" ("essay" atau "mcq"), jika mcq tambah "options" (array) & "correctAnswer". Materi: "${material.substring(0,6000)}"`;
+            const soalText = await callGeminiAPI(prompt, true);
+            setBankSoalQuestions(JSON.parse(soalText));
+            setScreen('bankSoalPlayer');
+        } catch (err) { setError('Gagal membuat soal. Coba materi yang lebih spesifik.'); } 
+        finally { setIsLoading(false); }
+    };
     return (
-        <div className="flex items-center justify-center h-screen bg-yellow-50 text-yellow-800 p-4">
-            <div className="text-center p-8 border-2 border-dashed border-yellow-300 rounded-lg bg-white">
-                <h1 className="text-2xl font-bold mb-2">Konfigurasi Dibutuhkan</h1>
-                <p>Harap masukkan konfigurasi Firebase dan API Key Anda di dalam kode untuk menjalankan aplikasi.</p>
-                <p className="mt-2 text-sm">Lihat instruksi di luar blok kode ini untuk panduan lengkap.</p>
+        <div className="p-4 max-w-2xl mx-auto">
+            <Header onBack={() => setScreen('subjectDashboard')} title="Bank Soal Pribadi" />
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+                <h2 className="text-xl font-semibold text-gray-700 mb-2">Buat Soal dari Materimu</h2>
+                <p className="text-gray-600 mb-4">Tempel materi dari catatanmu di sini, dan AI akan membuatkan soal latihan.</p>
+                <textarea value={material} onChange={(e) => setMaterial(e.target.value)} placeholder="Contoh: Fotosintesis adalah proses tumbuhan mengubah cahaya matahari menjadi energi..." className="w-full h-64 p-3 border-2 border-gray-200 rounded-lg"/>
+                <button onClick={handleGenerate} disabled={isLoading} className="mt-4 w-full p-4 bg-green-600 text-white font-bold rounded-lg flex items-center justify-center disabled:bg-green-300">
+                    {isLoading ? <Loader className="animate-spin mr-2"/> : <UploadCloud className="mr-2"/>}
+                    {isLoading ? 'Membuat Soal...' : 'Buatkan Soal'}
+                </button>
             </div>
         </div>
     );
+};
+const BankSoalPlayerScreen = () => {
+    const { bankSoalQuestions, setScreen } = useContext(AppContext);
+    const [userAnswers, setUserAnswers] = useState({});
+    const [isSubmitted, setSubmitted] = useState(false);
+    if(!bankSoalQuestions || bankSoalQuestions.length === 0) return <div className="p-4"><Header onBack={()=>setScreen('bankSoalGenerator')} title="Error"/><p>Tidak ada soal untuk ditampilkan.</p></div>
+    const mcqQuestions = bankSoalQuestions.filter(q => q.type === 'mcq');
+    const score = mcqQuestions.reduce((acc, q) => acc + (userAnswers[q.question] === q.correctAnswer ? 1 : 0), 0);
+    const scorePercentage = mcqQuestions.length > 0 ? Math.round((score / mcqQuestions.length) * 100) : 0;
+    return (
+        <div className="p-4 max-w-2xl mx-auto">
+            <Header onBack={() => setScreen('bankSoalGenerator')} title="Latihan Soal" />
+            <div className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
+                {isSubmitted && <h2 className="text-2xl font-bold text-center">Skor Pilihan Ganda: {scorePercentage}</h2>}
+                {bankSoalQuestions.map((q, qIndex) => (
+                    <div key={qIndex}>
+                        <p className="font-semibold text-gray-800 mb-3">{qIndex + 1}. {q.question}</p>
+                        {q.type === 'mcq' ? (
+                             <div className="space-y-2">
+                                {q.options.map((opt) => {
+                                    const isSelected = userAnswers[q.question] === opt;
+                                    let c = 'bg-white hover:bg-gray-50 border-gray-200';
+                                    if(isSubmitted){ if(opt===q.correctAnswer) c='bg-green-100 border-green-500 font-bold'; else if(isSelected) c='bg-red-100 border-red-500';} 
+                                    else if(isSelected) c='bg-blue-100 border-blue-500';
+                                    return (<button key={opt} onClick={()=>!isSubmitted && setUserAnswers(p=>({...p, [q.question]:opt}))} className={`w-full text-left p-3 rounded-lg border-2 transition ${c}`}> {opt} </button>);
+                                })}
+                            </div>
+                        ) : ( <textarea placeholder="Ketik jawaban esaimu..." disabled={isSubmitted} className="w-full p-2 border-2 rounded-lg mt-2"/> )}
+                        {isSubmitted && q.type === 'essay' && <p className="text-sm text-blue-700 italic mt-2">Periksa jawaban esaimu secara mandiri.</p>}
+                    </div>
+                ))}
+            </div>
+            {!isSubmitted && <button onClick={() => setSubmitted(true)} className="mt-6 w-full p-4 bg-green-600 text-white font-bold rounded-lg">Kumpulkan Jawaban</button>}
+            {isSubmitted && <button onClick={() => setScreen('bankSoalGenerator')} className="mt-6 w-full p-4 bg-blue-600 text-white font-bold rounded-lg">Buat Soal Lain</button>}
+        </div>
+    )
 }
+
+// --- UTILITY COMPONENTS ---
+const LoadingScreen = ({ message }) => (<div className="flex flex-col items-center justify-center min-h-screen bg-white"><Sparkles className="h-24 w-24 text-blue-500 animate-pulse" /><p className="mt-6 text-gray-700 font-semibold text-lg">{message || 'Memuat...'}</p></div>);
+const ErrorScreen = ({ message, onRetry }) => (<div className="flex flex-col items-center justify-center min-h-screen p-4 text-center"><X className="h-12 w-12 text-red-500 mx-auto" /><h2 className="mt-4 text-xl font-semibold text-gray-800">Oops, Terjadi Kesalahan!</h2><p className="text-gray-600 mt-2 max-w-sm">{message}</p><button onClick={onRetry} className="mt-6 px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg">Kembali</button></div>);
+const Header = ({ onBack, title, icon }) => (<div className="flex items-center mb-6"><button onClick={onBack} className="p-2 rounded-full hover:bg-gray-200 mr-4"><ArrowLeft className="h-6 w-6 text-gray-600" /></button>{icon && <div className="mr-3">{icon}</div>}<div><h1 className="text-2xl font-bold text-gray-800">{title}</h1></div></div>);
+const TabButton = ({ text, icon, active, onClick }) => (<button onClick={onClick} className={`flex-1 flex items-center justify-center p-3 font-semibold transition-colors ${active ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>{React.cloneElement(icon, { className: "mr-2 h-5 w-5"})} {text}</button>);
+const ListItem = ({text, onClick}) => (<button onClick={onClick} className="w-full text-left p-4 bg-gray-50 hover:bg-blue-100 rounded-lg transition-colors font-medium text-gray-800 flex justify-between items-center"><span>{text}</span></button>);
+const ChatModal = ({ topic, subject, onClose }) => {
+    const [history, setHistory] = useState([]);
+    const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const handleSend = async () => {
+        if (!input.trim()) return;
+        const newHistory = [...history, { role: 'user', text: input }];
+        setHistory(newHistory); setInput(''); setIsLoading(true);
+        try {
+            const prompt = `Anda "Bdukasi Expert". Jawab pertanyaan ini dalam konteks topik "${topic}" (${subject}). Pertanyaan: "${input}"`;
+            const aiResponse = await callGeminiAPI(prompt);
+            setHistory(prev => [...prev, { role: 'ai', text: aiResponse }]);
+        } catch (error) { setHistory(prev => [...prev, { role: 'ai', text: 'Maaf, ada gangguan.' }]);
+        } finally { setIsLoading(false); }
+    };
+    return (<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}><div className="bg-white rounded-2xl shadow-xl w-full max-w-lg h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}><header className="p-4 border-b flex justify-between items-center"><h2 className="text-lg font-bold">Tanya Expert: {topic}</h2><button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X/></button></header><main className="flex-1 overflow-y-auto p-4 space-y-4">{history.map((msg, i) => (<div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>{msg.role === 'ai' && <div className="flex-shrink-0 h-8 w-8 bg-gray-200 rounded-full flex items-center justify-center"><Sparkles className="h-5 w-5 text-purple-600" /></div>}<div className={`max-w-md p-3 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}><ContentRenderer text={msg.text}/></div></div>))}{isLoading && <div className="flex justify-start"><p>Mengetik...</p></div>}</main><footer className="p-4 border-t"><div className="relative"><input type="text" value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSend()} placeholder="Tanya tentang topik ini..." className="w-full p-3 pr-14 rounded-xl border-gray-300 border" /><button onClick={handleSend} disabled={isLoading} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-purple-600 text-white"><Sparkles className="h-5 w-5" /></button></div></footer></div></div>)
+};
