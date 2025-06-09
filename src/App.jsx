@@ -19,7 +19,7 @@ const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__f
 // --- LANGKAH 2: KONFIGURASI API KEY LAINNYA ---
 // Masukkan API Key Anda di sini.
 const GEMINI_API_KEY = "AIzaSyArJ1P8HanSQ_XVWX9m4kUlsIVXrBRInik";
-const YOUTUBE_API_KEY = "MASUKKAN_API_KEY_YOUTUBE_ANDA";
+const YOUTUBE_API_KEY = "AIzaSyD9Rp-oSegoIDr8q9XlKkqpEL64lB2bQVE";
 
 
 // --- Komponen Ikon (Lucide-React style SVGs) ---
