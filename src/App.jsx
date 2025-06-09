@@ -19,6 +19,7 @@ const firebaseConfig = {
   messagingSenderId: "662463693471",
   appId: "1:662463693471:web:9adb239c9082efc7e498aa",
   measurementId: "G-2ZYKPN5JBH"
+};
 
 // --- PENTING: Kunci API untuk Layanan Google & Lainnya ---
 const GEMINI_API_KEY = "AIzaSyArJ1P8HanSQ_XVWX9m4kUlsIVXrBRInik";
