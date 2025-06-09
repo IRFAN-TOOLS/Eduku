@@ -358,10 +358,18 @@ const QuizPlayerScreen = () => { /* ... (same as previous version) */
         if(!lessonContent) { setError("Konten materi tidak ditemukan untuk membuat kuis."); setScreen('subjectDashboard'); return; }
         setIsLoading(true);
         const prompt = `Buat 4 pertanyaan kuis pilihan ganda (A, B, C, D) dari materi ini, target siswa ${level} ${track||''}: "${lessonContent.substring(0,6000)}". Kembalikan dalam format JSON array. Objek: "question", "options" (array), dan "correctAnswer".`;
-        callGeminiAPI(prompt, true)
-            .then(quizText => setQuiz(JSON.parse(quizText)))
-            .catch(() => setError('Gagal membuat kuis.'))
-            .finally(() => setIsLoading(false));
+ callGeminiAPI(prompt, true)
+  .then(responseText => {
+    try {
+      const parsed = JSON.parse(responseText);
+      setTopics(parsed);
+    } catch (e) {
+      console.error("Gagal parse JSON:", e);
+      setTopics([]); // fallback agar tidak crash
+    }
+  })
+  .catch(console.error)
+  .finally(() => setIsLoadingTab(false));
     }, [lessonContent, level, track, setError, setScreen]);
     const score = quiz.reduce((acc, q, i) => acc + (userAnswers[i] === q.correctAnswer ? 1 : 0), 0);
     const scorePercentage = quiz.length > 0 ? Math.round(score/quiz.length * 100) : 0;
