@@ -318,6 +318,15 @@ const LessonScreen = () => { /* ... (same as previous version but with new image
         fetchContent();
         return () => { isMounted = false; };
     }, [topic, level, track, subject, stableSetLessonContent, stableUpdateHistory, stableSetError, setScreen]);
+    
+    if (!topic || isLoading) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-white">
+      <Loader className="h-16 w-16 text-blue-500 animate-spin" />
+      <p className="mt-4 text-gray-600 font-medium">Membuat materi lengkap...</p>
+    </div>
+  );
+}
 
     return (
         <div className="relative min-h-screen">
