@@ -1,42 +1,16 @@
-import React, { useState, useEffect, createContext, useContext, useCallback } from 'react';
+import React, { useState, useEffect, createContext, useContext, useCallback, useMemo } from 'react';
 import { 
     School, BrainCircuit, Lightbulb, FileText, ArrowLeft, Loader, Sparkles, 
     History, UploadCloud, Youtube, Check, X, MessageSquarePlus, FlaskConical, Globe, 
     Atom, Calculator, Dna, BarChart2, Drama, Computer, BookHeart, Landmark, Languages, HelpCircle
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
-
-// --- PENTING: Konfigurasi Firebase ---
-// Ganti semua nilai di bawah ini dengan kredensial dari proyek Firebase Anda sendiri.
-// Anda bisa mendapatkannya dari Pengaturan Proyek (Project settings) di konsol Firebase.
-const firebaseConfig = {
-        apiKey: "AIzaSyDz8mZoFdWLZs9zRC2xDndRzKQ7sju-Goc",
-  authDomain: "eduku-web.firebaseapp.com",
-  projectId: "eduku-web",
-  storageBucket: "eduku-web.firebasestorage.app",
-  messagingSenderId: "662463693471",
-  appId: "1:662463693471:web:9adb239c9082efc7e498aa",
-  measurementId: "G-2ZYKPN5JBH"
-};
 
 // --- PENTING: Kunci API untuk Layanan Google & Lainnya ---
+// Ganti nilai di bawah dengan API key Anda sendiri.
 const GEMINI_API_KEY = "AIzaSyArJ1P8HanSQ_XVWX9m4kUlsIVXrBRInik";
 const YOUTUBE_API_KEY = "AIzaSyD9Rp-oSegoIDr8q9XlKkqpEL64lB2bQVE";
 
-
-// Initialize Firebase
-// Aplikasi akan mencoba inisialisasi hanya jika API Key valid
-let app;
-try {
-const app = initializeApp(firebaseConfig);
-} catch (error) {
-    console.error("Firebase initialization error:", error);
-}
-
-const auth = app ? getAuth(app) : null;
-const googleProvider = new GoogleAuthProvider();
 
 // --- App Context ---
 const AppContext = createContext(null);
@@ -103,7 +77,6 @@ const callGeminiAPI = async (prompt, isJson = false) => {
     const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
     if (isJson) payload.generationConfig = { responseMimeType: "application/json" };
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-    // ... (sisa logika sama)
     const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     if (!response.ok) throw new Error(`Gemini API call failed: ${response.status}`);
     const result = await response.json();
@@ -113,8 +86,8 @@ const callGeminiAPI = async (prompt, isJson = false) => {
 };
 
 const callImagenAPI = async (prompt) => {
+    // NOTE: This uses a public proxy. For production, use a secure backend solution.
     const apiUrl = 'https://api-preview.chatgot.io/api/v1/deepimg/flux-1-dev';
-    // ... (sisa logika sama)
     const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
     if (!response.ok) throw new Error(`Imagen API call failed: ${response.status}`);
     const blob = await response.blob();
@@ -129,7 +102,6 @@ const callYouTubeAPI = async (query) => {
     }
     const encodedQuery = encodeURIComponent(query + " penjelasan singkat");
     const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodedQuery}&type=video&maxResults=1&key=${YOUTUBE_API_KEY}`;
-    // ... (sisa logika sama)
     const response = await fetch(apiUrl);
     if (!response.ok) return null;
     const data = await response.json();
@@ -159,8 +131,6 @@ function useLocalStorage(key, initialValue) {
 
 // --- App Provider Component ---
 const AppProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [authLoading, setAuthLoading] = useState(true);
     const [screen, setScreen] = useState('levelSelection');
     const [level, setLevel] = useState('');
     const [track, setTrack] = useState('');
@@ -170,23 +140,6 @@ const AppProvider = ({ children }) => {
     const [bankSoalQuestions, setBankSoalQuestions] = useState([]);
     const [history, setHistory] = useLocalStorage('bdukasiHistory_v17', []);
     const [error, setError] = useState('');
-    const [isFirebaseReady, setIsFirebaseReady] = useState(false);
-
-    useEffect(() => {
-        if (auth) {
-            setIsFirebaseReady(true);
-            const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-                setUser(currentUser);
-                setAuthLoading(false);
-            });
-            return () => unsubscribe();
-        } else {
-            // Jika Firebase tidak terinisialisasi
-            setError("Konfigurasi Firebase tidak valid. Periksa API Key Anda.");
-            setAuthLoading(false);
-            setIsFirebaseReady(false);
-        }
-    }, []);
 
     const updateHistory = useCallback((newEntry) => {
         setHistory(prev => [newEntry, ...prev.filter(h => h.topic !== newEntry.topic)].slice(0, 50));
@@ -197,15 +150,11 @@ const AppProvider = ({ children }) => {
         setTimeout(() => setError(''), 8000);
     }, []);
     
-    const handleSignOut = () => {
-        if (auth) {
-            signOut(auth).catch(err => console.error("Sign out error:", err));
-        }
-    };
-
-    const value = React.useMemo(() => ({
-        user, authLoading, handleSignOut, screen, setScreen, level, setLevel, track, setTrack, subject, setSubject, topic, setTopic, lessonContent, setLessonContent, bankSoalQuestions, setBankSoalQuestions, history, updateHistory, error, setError: handleGlobalError, isFirebaseReady
-    }), [user, authLoading, screen, level, track, subject, topic, lessonContent, bankSoalQuestions, history, error, updateHistory, handleGlobalError, isFirebaseReady]);
+    const value = useMemo(() => ({
+        screen, setScreen, level, setLevel, track, setTrack, subject, setSubject, topic, setTopic, 
+        lessonContent, setLessonContent, bankSoalQuestions, setBankSoalQuestions, 
+        history, updateHistory, error, setError: handleGlobalError
+    }), [screen, level, track, subject, topic, lessonContent, bankSoalQuestions, history, error, updateHistory, handleGlobalError]);
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
@@ -216,25 +165,11 @@ export default function App() {
 }
 
 const Main = () => {
-    const { user, authLoading, error, setError, isFirebaseReady } = useContext(AppContext);
+    const { error, setError } = useContext(AppContext);
     
     return (
         <div className="bg-gray-50 min-h-screen font-sans antialiased">
-            {authLoading ? (
-                <LoadingScreen message="Memeriksa sesi Anda..." />
-            ) : !isFirebaseReady ? (
-                 <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-                    <X className="h-12 w-12 text-red-500 mx-auto" />
-                    <h2 className="mt-4 text-xl font-semibold text-gray-800">Konfigurasi Firebase Gagal</h2>
-                    <p className="text-gray-600 mt-2 max-w-sm">
-                        Kunci API Firebase tidak valid. Silakan periksa kembali konfigurasi Anda di dalam kode.
-                    </p>
-                </div>
-            ) : !user ? (
-                <LoginScreen />
-            ) : (
-                <AppScreens />
-            )}
+            <AppScreens />
             {error && (
                  <div className="fixed bottom-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg z-50 flex items-center gap-3 animate-pulse">
                     <X size={24} />
@@ -295,40 +230,10 @@ const ContentRenderer = ({ text }) => {
 };
 
 // --- Screens ---
-const LoginScreen = () => {
-    const { setError } = useContext(AppContext);
-    const handleLogin = () => {
-        if (auth) {
-            signInWithPopup(auth, googleProvider)
-                .catch((err) => {
-                    setError(err.message);
-                    console.error("Login Error:", err);
-                });
-        } else {
-            setError("Layanan otentikasi tidak tersedia.");
-        }
-    };
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-white">
-            <Sparkles className="mx-auto text-blue-600 h-20 w-20" />
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mt-4 text-center">Selamat Datang di Bdukasi Expert</h1>
-            <p className="text-gray-600 mt-2 mb-8 text-center max-w-md">Silakan login untuk memulai petualangan belajarmu!</p>
-            <button onClick={handleLogin} className="w-full max-w-xs p-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-lg flex items-center justify-center">
-                <svg className="w-6 h-6 mr-3" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C42.02,35.622,44,30.138,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
-                Login dengan Google
-            </button>
-        </div>
-    );
-};
-
 const LevelSelectionScreen = () => {
-    const { setScreen, setLevel, handleSignOut, user } = useContext(AppContext);
+    const { setScreen, setLevel } = useContext(AppContext);
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-4">
-            <div className="absolute top-4 right-4 flex items-center">
-                <span className="mr-2 font-semibold text-gray-600 hidden sm:block">{user.displayName}</span>
-                <button onClick={handleSignOut} className="bg-red-500 text-white px-3 py-1 rounded-lg font-semibold hover:bg-red-600 transition">Logout</button>
-            </div>
             <Sparkles className="mx-auto text-blue-600 h-20 w-20" />
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mt-4 text-center">Bdukasi Expert</h1>
             <p className="text-gray-600 mt-2 mb-8 text-center max-w-md">Pilih jenjang pendidikanmu untuk melanjutkan.</p>
@@ -339,7 +244,6 @@ const LevelSelectionScreen = () => {
     );
 };
 
-// ... (Sisa komponen lainnya seperti TrackSelectionScreen, SubjectSelectionScreen, dll. tetap sama)
 const TrackSelectionScreen = () => {
     const { setScreen, setTrack } = useContext(AppContext);
     return (
@@ -498,8 +402,8 @@ const LessonScreen = () => {
             updateHistory({ level, track, subject: subjectName, topic, date: new Date().toISOString() });
             
             const fullContext = `${subjectName} untuk siswa ${level} ${track ? `jurusan ${track}` : ''}`;
-            const textPrompt = `Sebagai guru ahli, buatkan materi lengkap tentang "${topic}" (${fullContext}) sesuai Kurikulum Merdeka...`;
-            const imagePrompt = `Educational illustration, simple colorful flat design style, topic: "${topic}"...`;
+            const textPrompt = `Sebagai guru ahli, buatkan materi lengkap tentang "${topic}" (${fullContext}) sesuai Kurikulum Merdeka. Gunakan format Markdown, termasuk header, list, bold, dan italic. Untuk rumus matematika, apit dengan '$$' (contoh: $$E=mc^2$$).`;
+            const imagePrompt = `Educational illustration, simple colorful flat design style, topic: "${topic}" (${fullContext})`;
             const youtubeQuery = `${topic} ${subjectName}`;
 
             try {
@@ -510,8 +414,9 @@ const LessonScreen = () => {
                 const imageUrl = results[1].status === 'fulfilled' ? results[1].value : null;
                 const videoData = results[2].status === 'fulfilled' ? results[2].value : null;
 
+                if (results[0].status !== 'fulfilled') stableSetError("Gagal memuat materi pelajaran.");
                 if (results[1].status !== 'fulfilled') stableSetError("Gagal memuat gambar ilustrasi.");
-                if (results[2].status !== 'fulfilled' || !videoData) stableSetError("Video pembelajaran tidak ditemukan.");
+                if (results[2].status !== 'fulfilled' || !videoData) console.warn("Video pembelajaran tidak ditemukan.");
 
                 setContent({ text: lessonText, imageUrl, video: videoData });
                 setLessonContent(lessonText);
@@ -556,7 +461,7 @@ const LessonScreen = () => {
         </div>
     );
 };
-// ... (Sisa komponen lainnya seperti QuizPlayerScreen, BankSoalGeneratorScreen, dll. tetap sama)
+
 const QuizPlayerScreen = () => {
     const { lessonContent, level, track, subject, setScreen, setError } = useContext(AppContext);
     const [quiz, setQuiz] = useState([]);
@@ -571,7 +476,7 @@ const QuizPlayerScreen = () => {
             return; 
         }
         setIsLoading(true);
-        const prompt = `Buat 4 pertanyaan kuis pilihan ganda (A, B, C, D) dari materi tentang "${subject.name}" ini...`;
+        const prompt = `Buat 4 pertanyaan kuis pilihan ganda (A, B, C, D) dari materi tentang "${subject.name}" ini:\n\n${lessonContent.substring(0,2000)}\n\nPastikan pertanyaan relevan dengan materi. Jawab hanya dalam format JSON array. Setiap elemen array adalah objek dengan properti "question" (string), "options" (array string), dan "correctAnswer" (string). Contoh: [{"question": "...", "options": ["A", "B", "C", "D"], "correctAnswer": "A"}]`;
         callGeminiAPI(prompt, true)
             .then(responseText => {
                 try {
@@ -624,15 +529,15 @@ const BankSoalGeneratorScreen = () => {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleGenerate = async () => {
-        if (!material.trim()) { setError("Masukkan materi."); return; };
+        if (!material.trim()) { setError("Masukkan materi terlebih dahulu."); return; };
         setIsLoading(true);
         try {
-            const prompt = `Buat 5 pertanyaan dari materi ini untuk siswa ${level} ${track||''}...`;
+            const prompt = `Buat 5 pertanyaan latihan (2 pilihan ganda, 3 esai) dari materi ini untuk siswa ${level} ${track||''}, mapel ${subject.name}:\n\n${material}\n\nJawab hanya dalam format JSON array. Objek Pilihan Ganda harus memiliki properti "type":"mcq", "question", "options" (array), dan "correctAnswer". Objek Esai harus memiliki "type":"essay" dan "question".`;
             const soalText = await callGeminiAPI(prompt, true);
             const parsedSoal = JSON.parse(soalText);
             if (Array.isArray(parsedSoal)) { setBankSoalQuestions(parsedSoal); setScreen('bankSoalPlayer'); } 
             else { throw new Error("Format soal tidak valid."); }
-        } catch (err) { setError('Gagal membuat soal.'); } 
+        } catch (err) { setError('Gagal membuat soal dari materi yang diberikan.'); } 
         finally { setIsLoading(false); }
     };
 
@@ -641,9 +546,9 @@ const BankSoalGeneratorScreen = () => {
             <Header onBack={() => setScreen('subjectDashboard')} title="Bank Soal Pribadi" />
             <div className="bg-white rounded-2xl shadow-lg p-6">
                 <h2 className="text-xl font-semibold text-gray-700 mb-2">Buat Soal dari Materimu</h2>
-                <p className="text-gray-600 mb-4">Tempel materi dari catatanmu, dan AI akan membuatkan soal latihan.</p>
-                <textarea value={material} onChange={(e) => setMaterial(e.target.value)} placeholder="Contoh: Fotosintesis adalah..." className="w-full h-64 p-3 border-2 rounded-lg"/>
-                <button onClick={handleGenerate} disabled={isLoading} className="mt-4 w-full p-4 bg-green-600 text-white font-bold rounded-lg disabled:bg-green-300">
+                <p className="text-gray-600 mb-4">Tempel materi dari catatanmu di sini, dan AI akan membuatkan soal latihan untukmu.</p>
+                <textarea value={material} onChange={(e) => setMaterial(e.target.value)} placeholder="Contoh: Fotosintesis adalah proses tumbuhan mengubah cahaya matahari menjadi energi..." className="w-full h-64 p-3 border-2 rounded-lg"/>
+                <button onClick={handleGenerate} disabled={isLoading} className="mt-4 w-full p-4 bg-green-600 text-white font-bold rounded-lg disabled:bg-green-300 flex items-center justify-center">
                     {isLoading ? <Loader className="animate-spin mr-2"/> : <UploadCloud className="mr-2"/>}
                     {isLoading ? 'Membuat Soal...' : 'Buatkan Soal'}
                 </button>
@@ -662,7 +567,7 @@ const BankSoalPlayerScreen = () => {
             <div className="p-4 sm:p-6 max-w-2xl mx-auto">
                 <Header onBack={()=>setScreen('bankSoalGenerator')} title="Error"/>
                 <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-                    <p>Tidak ada soal untuk ditampilkan.</p>
+                    <p>Tidak ada soal untuk ditampilkan. Silakan kembali untuk membuat soal baru.</p>
                     <button onClick={() => setScreen('bankSoalGenerator')} className="mt-6 w-full p-4 bg-blue-600 text-white rounded-lg">Kembali</button>
                 </div>
             </div>
@@ -691,12 +596,12 @@ const BankSoalPlayerScreen = () => {
                                     return (<button key={optIndex} onClick={()=>!isSubmitted && setUserAnswers(p=>({...p, [q.question]:opt}))} className={`w-full text-left p-3 rounded-lg border-2 transition ${c}`}> {opt} </button>);
                                 })}
                             </div>
-                        ) : ( <textarea placeholder="Ketik jawaban..." disabled={isSubmitted} className="w-full p-2 border-2 rounded-lg mt-2"/> )}
-                        {isSubmitted && q.type === 'essay' && <p className="text-sm text-blue-700 italic mt-2">Periksa jawaban esaimu.</p>}
+                        ) : ( <textarea placeholder="Ketik jawaban esai di sini..." disabled={isSubmitted} className="w-full p-2 border-2 rounded-lg mt-2"/> )}
+                        {isSubmitted && q.type === 'essay' && <p className="text-sm text-blue-700 italic mt-2">Mode latihan: Periksa sendiri jawaban esaimu berdasarkan materi.</p>}
                     </div>
                 ))}
             </div>
-            {!isSubmitted && <button onClick={() => setSubmitted(true)} className="mt-6 w-full p-4 bg-green-600 text-white font-bold rounded-lg">Kumpulkan</button>}
+            {!isSubmitted && <button onClick={() => setSubmitted(true)} className="mt-6 w-full p-4 bg-green-600 text-white font-bold rounded-lg">Kumpulkan Jawaban</button>}
             {isSubmitted && <button onClick={() => setScreen('bankSoalGenerator')} className="mt-6 w-full p-4 bg-blue-600 text-white font-bold rounded-lg">Buat Soal Lain</button>}
         </div>
     )
@@ -730,12 +635,12 @@ const ChatModal = ({ topic, subject, onClose, isPage=false }) => {
         const newHistory = [...history, { role: 'user', text: input }];
         setHistory(newHistory); setInput(''); setIsLoading(true);
         try {
-            const prompt = `Anda "Bdukasi Expert". Jawab pertanyaan ini dalam konteks topik "${topic}" (${subject})...`;
+            const prompt = `Anda adalah "Bdukasi Expert", seorang tutor AI yang ramah dan membantu. Jawab pertanyaan berikut dalam konteks topik "${topic}" (mata pelajaran: ${subject}). Berikan penjelasan yang jelas, mudah dimengerti, dan relevan dengan kurikulum di Indonesia. Jika pertanyaan di luar konteks, ingatkan pengguna dengan sopan untuk tetap fokus pada topik.\nPertanyaan: ${input}`;
             const aiResponse = await callGeminiAPI(prompt);
             setHistory(prev => [...prev, { role: 'ai', text: aiResponse }]);
         } catch (error) { 
-            setError("Gagal menghubungi AI. Coba lagi.");
-            setHistory(prev => prev.slice(0, -1));
+            setError("Gagal menghubungi AI. Coba lagi nanti.");
+            setHistory(prev => prev.slice(0, newHistory.length-1)); // Revert user message on error
         } finally { setIsLoading(false); }
     };
     
@@ -746,7 +651,7 @@ const ChatModal = ({ topic, subject, onClose, isPage=false }) => {
         <div className={isPage ? 'h-full flex flex-col' : chatContainerClass} onClick={e => e.stopPropagation()}>
             {!isPage && ( <header className="p-4 border-b flex justify-between items-center shrink-0"><h2 className="text-lg font-bold">Tanya Expert: {topic}</h2><button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X/></button></header> )}
             <main className="flex-1 overflow-y-auto p-4 space-y-4">
-                <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm text-center">Jawaban mungkin tidak selalu akurat.</div>
+                <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm text-center">Jawaban AI mungkin tidak selalu 100% akurat. Gunakan sebagai referensi.</div>
                 {history.map((msg, i) => (<div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>{msg.role === 'ai' && <div className="flex-shrink-0 h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center"><Sparkles className="h-5 w-5 text-purple-600" /></div>}<div className={`max-w-prose p-3 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}><ContentRenderer text={msg.text}/></div></div>))}{isLoading && <div className="flex justify-start items-center gap-2 text-gray-500"><Loader className="animate-spin h-4 w-4" /><p>Mengetik...</p></div>}
             </main>
             <footer className="p-4 border-t bg-white shrink-0">
