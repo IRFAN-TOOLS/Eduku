@@ -29,7 +29,6 @@ const googleProvider = new GoogleAuthProvider();
 const AppContext = createContext(null);
 
 // --- Curriculum Data ---
-// Menggunakan 'iconName' sebagai string untuk referensi ikon yang lebih aman.
 const curriculum = {
   'SD': {
     subjects: [
@@ -105,12 +104,11 @@ const callGeminiAPI = async (prompt, isJson = false) => {
         return text;
     } catch (error) {
         console.error("Error calling Gemini API:", error);
-        throw error; // Re-throw the error to be caught by the caller
+        throw error;
     }
 };
 
 const callImagenAPI = async (prompt) => {
-    // API ini mungkin tidak stabil. Pertimbangkan untuk menggantinya jika sering gagal.
     const apiUrl = 'https://api-preview.chatgot.io/api/v1/deepimg/flux-1-dev';
     const payload = { prompt };
      try {
@@ -127,7 +125,7 @@ const callImagenAPI = async (prompt) => {
         }
     } catch (error) {
         console.error("Error calling Imagen API:", error);
-        throw error; // Re-throw
+        throw error;
     }
 };
 
@@ -160,7 +158,7 @@ const AppProvider = ({ children }) => {
     const [topic, setTopic] = useState('');
     const [lessonContent, setLessonContent] = useState(null);
     const [bankSoalQuestions, setBankSoalQuestions] = useState([]);
-    const [history, setHistory] = useLocalStorage('bdukasiHistory_v15', []); // Versi baru
+    const [history, setHistory] = useLocalStorage('bdukasiHistory_v16', []); // Versi baru
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -177,7 +175,6 @@ const AppProvider = ({ children }) => {
     
     const handleGlobalError = useCallback((message) => {
         setError(message || "Terjadi kesalahan yang tidak diketahui.");
-        // Otomatis hapus error setelah beberapa detik
         setTimeout(() => setError(''), 8000);
     }, []);
     
@@ -185,7 +182,6 @@ const AppProvider = ({ children }) => {
         signOut(auth).catch(err => console.error("Sign out error:", err));
     };
 
-    // Memoize context value to prevent unnecessary re-renders
     const value = React.useMemo(() => ({
         user, authLoading, handleSignOut, screen, setScreen, level, setLevel, track, setTrack, subject, setSubject, topic, setTopic, lessonContent, setLessonContent, bankSoalQuestions, setBankSoalQuestions, history, updateHistory, error, setError: handleGlobalError
     }), [user, authLoading, screen, level, track, subject, topic, lessonContent, bankSoalQuestions, history, error, updateHistory, handleGlobalError]);
@@ -204,13 +200,12 @@ const Main = () => {
     return (
         <div className="bg-gray-50 min-h-screen font-sans antialiased">
             {authLoading ? (
-                <LoadingScreen message="Memeriksa sesi Anda..." />
+                <LoadingScreen message="Memuat data Anda..." />
             ) : !user ? (
                 <LoginScreen />
             ) : (
                 <AppScreens />
             )}
-            {/* Global Error Notification */}
             {error && (
                  <div className="fixed bottom-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg z-50 flex items-center gap-3 animate-pulse">
                     <X size={24} />
@@ -238,7 +233,7 @@ const AppScreens = () => {
     }
 }
 
-// --- Dynamic Icon Component (FIX) ---
+// --- Dynamic Icon Component ---
 const iconMap = {
     School, BrainCircuit, Lightbulb, FileText, ArrowLeft, Loader, Sparkles, 
     History, UploadCloud, Youtube, Check, X, MessageSquarePlus, FlaskConical, Globe, 
@@ -247,7 +242,7 @@ const iconMap = {
 
 const DynamicIcon = ({ name, ...props }) => {
     const IconComponent = iconMap[name];
-    if (!IconComponent) return <HelpCircle {...props} />; // Fallback
+    if (!IconComponent) return <HelpCircle {...props} />;
     return <IconComponent {...props} />;
 };
 
@@ -481,6 +476,9 @@ const LessonScreen = () => {
 
     const subjectName = subject?.name;
 
+    // FIX: Menggunakan useCallback untuk stabilitas referensi fungsi
+    const stableSetError = useCallback(setError, [setError]);
+
     useEffect(() => {
         if (!topic || !subjectName) {
             setScreen('subjectDashboard');
@@ -490,16 +488,20 @@ const LessonScreen = () => {
         let isMounted = true;
         const fetchContent = async () => {
             if (!isMounted) return;
-            setIsLoading(true);
             
+            setIsLoading(true);
+            // Reset content sebelum fetch baru
+            setContent({ text: null, imageUrl: null, video: null });
+
             updateHistory({ level, track, subject: subjectName, topic, date: new Date().toISOString() });
             
             const fullContext = `${subjectName} untuk siswa ${level} ${track ? `jurusan ${track}` : ''}`;
             const textPrompt = `Sebagai guru ahli, buatkan materi lengkap tentang "${topic}" (${fullContext}) sesuai Kurikulum Merdeka. Gunakan format Markdown (heading, list, bold). Untuk RUMUS MATEMATIKA, WAJIB gunakan delimiter $$...$$ (contoh: $$L = \\pi r^2$$).`;
             const imagePrompt = `Educational illustration, simple colorful flat design style, topic: "${topic}" for ${fullContext}.`;
-            const videoPrompt = `Cari satu video YouTube berbahasa Indonesia paling relevan untuk menjelaskan "${topic}" (${fullContext}). Jawab HANYA dalam format JSON dengan key "title" dan "youtubeId".`;
+            const videoPrompt = `Cari satu video YouTube berbahasa Indonesia paling relevan untuk menjelaskan "${topic}" (${fullContext}). Jawab HANYA dalam format JSON dengan key "title" dan "youtubeId". Jika tidak ada, kembalikan JSON kosong {}.`;
 
             try {
+                // FIX: Logika yang lebih kuat untuk menangani kegagalan API secara terpisah
                 const results = await Promise.allSettled([
                     callGeminiAPI(textPrompt),
                     callImagenAPI(imagePrompt),
@@ -508,31 +510,42 @@ const LessonScreen = () => {
 
                 if (!isMounted) return;
 
-                const lessonText = results[0].status === 'fulfilled' ? results[0].value : 'Gagal memuat materi teks. Coba lagi nanti.';
-                const imageUrl = results[1].status === 'fulfilled' ? results[1].value : null;
+                const lessonText = results[0].status === 'fulfilled' 
+                    ? results[0].value 
+                    : 'Gagal memuat materi teks. Silakan coba muat ulang halaman.';
+                
+                const imageUrl = results[1].status === 'fulfilled' 
+                    ? results[1].value 
+                    : null;
                 
                 let videoJson = null;
                 if (results[2].status === 'fulfilled') {
                     try {
-                        videoJson = JSON.parse(results[2].value);
+                        const parsedVideo = JSON.parse(results[2].value);
+                        // Pastikan ada youtubeId sebelum di set
+                        if (parsedVideo && parsedVideo.youtubeId) {
+                            videoJson = parsedVideo;
+                        }
                     } catch (e) {
                         console.error("Gagal parse JSON video:", e);
                     }
                 }
-
+                
+                // Set notifikasi error yang tidak memblokir UI
                 if (results[1].status !== 'fulfilled') {
-                    setError("Gagal memuat gambar ilustrasi.");
+                    stableSetError("Gagal memuat gambar ilustrasi.");
                 }
-                 if (results[2].status !== 'fulfilled' || !videoJson) {
-                    setError("Gagal menemukan video pembelajaran.");
+                if (results[2].status !== 'fulfilled' || !videoJson) {
+                    stableSetError("Video pembelajaran tidak ditemukan.");
                 }
 
+                // Tetap set konten meskipun ada yang gagal
                 setContent({ text: lessonText, imageUrl, video: videoJson });
                 setLessonContent(lessonText);
 
             } catch (err) {
                 console.error("General error fetching lesson content:", err);
-                setError('Gagal memuat konten pelajaran.');
+                setContent({ text: 'Terjadi kesalahan fatal saat memuat konten. Coba lagi nanti.', imageUrl: null, video: null });
             } finally {
                 if (isMounted) setIsLoading(false);
             }
@@ -543,7 +556,7 @@ const LessonScreen = () => {
         return () => {
             isMounted = false;
         };
-    }, [topic, level, track, subjectName, setLessonContent, updateHistory, setError, setScreen]);
+    }, [topic, level, track, subjectName, setLessonContent, updateHistory, setScreen, stableSetError]);
     
     if (isLoading) {
         return <LoadingScreen message={`Membuat materi lengkap untuk: ${topic}`} />;
