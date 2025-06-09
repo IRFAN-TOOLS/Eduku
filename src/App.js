@@ -8,6 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 
+
 // --- Firebase Configuration ---
 // NOTE: Ganti dengan konfigurasi Firebase Anda sendiri
 const firebaseConfig = {apiKey: "AIzaSyANQqaFwrsf3xGSDxyn9pcRJqJrIiHrjM0", 
@@ -30,9 +31,56 @@ const AppContext = createContext(null);
 
 // --- Curriculum Data ---
 const curriculum = {
-  'SD': { subjects: [ { name: 'Matematika', icon: <Calculator size={48} className="text-blue-500"/> }, { name: 'IPA', icon: <Atom size={48} className="text-green-500"/> }, { name: 'IPS', icon: <Globe size={48} className="text-orange-500"/> }, { name: 'Bahasa Indonesia', icon: <BookHeart size={48} className="text-red-500"/> }, { name: 'Tanya Segalanya', icon: <HelpCircle size={48} className="text-purple-500"/> } ] },
-  'SMP': { subjects: [ { name: 'Matematika', icon: <Calculator size={48} className="text-blue-500"/> }, { name: 'IPA Terpadu', icon: <FlaskConical size={48} className="text-green-500"/> }, { name: 'IPS Terpadu', icon: <Globe size={48} className="text-orange-500"/> }, { name: 'Bahasa Indonesia', icon: <BookHeart size={48} className="text-red-500"/> }, { name: 'Bahasa Inggris', icon: <Drama size={48} className="text-purple-500"/> }, { name: 'Informatika', icon: <Computer size={48} className="text-gray-600"/> }, { name: 'Tanya Segalanya', icon: <HelpCircle size={48} className="text-purple-500"/> } ] },
-  'SMA': { tracks: { 'IPA': [ { name: 'Matematika Peminatan', icon: <Calculator size={48} className="text-blue-500"/> }, { name: 'Fisika', icon: <Atom size={48} className="text-sky-500"/> }, { name: 'Kimia', icon: <FlaskConical size={48} className="text-green-500"/> }, { name: 'Biologi', icon: <Dna size={48} className="text-teal-500"/> }, { name: 'Tanya Segalanya', icon: <HelpCircle size={48} className="text-purple-500"/> } ], 'IPS': [ { name: 'Ekonomi', icon: <BarChart2 size={48} className="text-indigo-500"/> }, { name: 'Geografi', icon: <Globe size={48} className="text-orange-500"/> }, { name: 'Sosiologi', icon: <School size={48} className="text-rose-500"/> }, { name: 'Sejarah', icon: <History size={48} className="text-amber-700"/> }, { name: 'Tanya Segalanya', icon: <HelpCircle size={48} className="text-purple-500"/> } ], 'Bahasa': [ { name: 'Sastra Indonesia', icon: <BookHeart size={48} className="text-red-500"/> }, { name: 'Sastra Inggris', icon: <Drama size={48} className="text-purple-500"/> }, { name: 'Antropologi', icon: <Globe size={48} className="text-orange-500"/> }, { name: 'Bahasa Asing Lain', icon: <Languages size={48} className="text-pink-500"/> }, { name: 'Tanya Segalanya', icon: <HelpCircle size={48} className="text-purple-500"/> } ] } }
+  'SD': {
+    subjects: [
+      { name: 'Matematika', iconName: 'Calculator', color: 'text-blue-500' },
+      { name: 'IPA', iconName: 'Atom', color: 'text-green-500' },
+      { name: 'IPS', iconName: 'Globe', color: 'text-orange-500' },
+      { name: 'PKN', iconName: 'Landmark', color: 'text-yellow-600' },
+      { name: 'Bahasa Indonesia', iconName: 'BookHeart', color: 'text-red-500' },
+      { name: 'Tanya Segalanya', iconName: 'HelpCircle', color: 'text-purple-500' }
+    ]
+  },
+  'SMP': {
+    subjects: [
+      { name: 'Matematika', iconName: 'Calculator', color: 'text-blue-500' },
+      { name: 'IPA Terpadu', iconName: 'FlaskConical', color: 'text-green-500' },
+      { name: 'IPS Terpadu', iconName: 'Globe', color: 'text-orange-500' },
+      { name: 'PKN', iconName: 'Landmark', color: 'text-yellow-600' },
+      { name: 'Bahasa Indonesia', iconName: 'BookHeart', color: 'text-red-500' },
+      { name: 'Bahasa Inggris', iconName: 'Drama', color: 'text-purple-500' },
+      { name: 'Informatika', iconName: 'Computer', color: 'text-gray-600' },
+      { name: 'Tanya Segalanya', iconName: 'HelpCircle', color: 'text-purple-500' }
+    ]
+  },
+  'SMA': {
+    tracks: {
+      'IPA': [
+        { name: 'Matematika Peminatan', iconName: 'Calculator', color: 'text-blue-500' },
+        { name: 'Fisika', iconName: 'Atom', color: 'text-sky-500' },
+        { name: 'Kimia', iconName: 'FlaskConical', color: 'text-green-500' },
+        { name: 'Biologi', iconName: 'Dna', color: 'text-teal-500' },
+        { name: 'PKN', iconName: 'Landmark', color: 'text-yellow-600' },
+        { name: 'Tanya Segalanya', iconName: 'HelpCircle', color: 'text-purple-500' }
+      ],
+      'IPS': [
+        { name: 'Ekonomi', iconName: 'BarChart2', color: 'text-indigo-500' },
+        { name: 'Geografi', iconName: 'Globe', color: 'text-orange-500' },
+        { name: 'Sosiologi', iconName: 'School', color: 'text-rose-500' },
+        { name: 'Sejarah', iconName: 'History', color: 'text-amber-700' },
+        { name: 'PKN', iconName: 'Landmark', color: 'text-yellow-600' },
+        { name: 'Tanya Segalanya', iconName: 'HelpCircle', color: 'text-purple-500' }
+      ],
+      'Bahasa': [
+        { name: 'Sastra Indonesia', iconName: 'BookHeart', color: 'text-red-500' },
+        { name: 'Sastra Inggris', iconName: 'Drama', color: 'text-purple-500' },
+        { name: 'Antropologi', iconName: 'Globe', color: 'text-orange-500' },
+        { name: 'Bahasa Asing Lain', iconName: 'Languages', color: 'text-pink-500' },
+        { name: 'PKN', iconName: 'Landmark', color: 'text-yellow-600' },
+        { name: 'Tanya Segalanya', iconName: 'HelpCircle', color: 'text-purple-500' }
+      ]
+    }
+  }
 };
 
 // --- API Helper Functions ---
