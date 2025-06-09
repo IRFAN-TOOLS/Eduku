@@ -30,9 +30,7 @@ const YOUTUBE_API_KEY = "AIzaSyD9Rp-oSegoIDr8q9XlKkqpEL64lB2bQVE";
 // Aplikasi akan mencoba inisialisasi hanya jika API Key valid
 let app;
 try {
-    if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("MASUKKAN")) {
-        app = initializeApp(firebaseConfig);
-    }
+const app = initializeApp(firebaseConfig);
 } catch (error) {
     console.error("Firebase initialization error:", error);
 }
