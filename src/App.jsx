@@ -1,4 +1,4 @@
-limport React, { useState, useEffect, createContext, useContext, useCallback } from 'react';
+import React, { useState, useEffect, createContext, useContext, useCallback } from 'react';
 import { 
     School, BrainCircuit, Lightbulb, FileText, ArrowLeft, Loader, Sparkles, 
     History, UploadCloud, Youtube, Check, X, MessageSquarePlus, FlaskConical, Globe, 
