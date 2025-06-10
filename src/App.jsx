@@ -7,7 +7,8 @@ import {
 import ReactMarkdown from 'react-markdown';
 
 // --- PENTING: Kunci API untuk Layanan Google & Lainnya ---
-// Ganti nilai di bawah dengan API key Anda sendiri.
+// Ganti nilai di bawah dengan API key Anda sendiri yang VALID.
+// Kegagalan memuat materi seringkali disebabkan oleh API Key yang tidak valid.
 const GEMINI_API_KEY = "AIzaSyArJ1P8HanSQ_XVWX9m4kUlsIVXrBRInik";
 const YOUTUBE_API_KEY = "AIzaSyD9Rp-oSegoIDr8q9XlKkqpEL64lB2bQVE";
 
@@ -72,7 +73,7 @@ const curriculum = {
 // --- API Helper Functions ---
 const callGeminiAPI = async (prompt, isJson = false) => {
     if (!GEMINI_API_KEY || GEMINI_API_KEY.startsWith("MASUKKAN")) {
-        throw new Error("Gemini API Key tidak valid.");
+        throw new Error("Gemini API Key tidak valid. Mohon ganti di dalam kode.");
     }
     const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
     if (isJson) payload.generationConfig = { responseMimeType: "application/json" };
@@ -81,17 +82,17 @@ const callGeminiAPI = async (prompt, isJson = false) => {
     if (!response.ok) throw new Error(`Gemini API call failed: ${response.status}`);
     const result = await response.json();
     const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error("Invalid Gemini API response");
+    if (!text) throw new Error("Invalid Gemini API response. Periksa kembali API Key atau permintaan Anda.");
     return text;
 };
 
 const callImagenAPI = async (prompt) => {
-    // NOTE: This uses a public proxy. For production, use a secure backend solution.
+    // NOTE: This uses a public proxy which can be unreliable. For production, use a secure backend solution.
     const apiUrl = 'https://api-preview.chatgot.io/api/v1/deepimg/flux-1-dev';
     const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
     if (!response.ok) throw new Error(`Imagen API call failed: ${response.status}`);
     const blob = await response.blob();
-    if (!blob.type.startsWith('image/')) throw new Error("API did not return a valid image.");
+    if (!blob.type.startsWith('image/')) throw new Error("API tidak mengembalikan gambar yang valid.");
     return URL.createObjectURL(blob);
 };
 
@@ -393,10 +394,16 @@ const LessonScreen = () => {
     const stableSetError = useCallback(setError, [setError]);
 
     useEffect(() => {
-        if (!topic || !subjectName) { setScreen('subjectDashboard'); return; }
+        if (!topic || !subjectName) { 
+            setScreen('subjectDashboard'); 
+            return; 
+        }
+        
         let isMounted = true;
+        
         const fetchContent = async () => {
             if (!isMounted) return;
+            
             setIsLoading(true);
             setContent({ text: null, imageUrl: null, video: null });
             updateHistory({ level, track, subject: subjectName, topic, date: new Date().toISOString() });
@@ -407,27 +414,56 @@ const LessonScreen = () => {
             const youtubeQuery = `${topic} ${subjectName}`;
 
             try {
-                const results = await Promise.allSettled([ callGeminiAPI(textPrompt), callImagenAPI(imagePrompt), callYouTubeAPI(youtubeQuery) ]);
+                const results = await Promise.allSettled([ 
+                    callGeminiAPI(textPrompt), 
+                    callImagenAPI(imagePrompt), 
+                    callYouTubeAPI(youtubeQuery) 
+                ]);
+
                 if (!isMounted) return;
 
-                const lessonText = results[0].status === 'fulfilled' ? results[0].value : 'Gagal memuat materi teks.';
-                const imageUrl = results[1].status === 'fulfilled' ? results[1].value : null;
-                const videoData = results[2].status === 'fulfilled' ? results[2].value : null;
+                const [lessonTextResult, imageUrlResult, videoDataResult] = results;
+                
+                const errorMessages = [];
+                
+                const lessonText = lessonTextResult.status === 'fulfilled' ? lessonTextResult.value : 'Gagal memuat materi teks.';
+                if (lessonTextResult.status === 'rejected') {
+                    console.error("Gemini API Error:", lessonTextResult.reason);
+                    errorMessages.push('Materi pelajaran tidak dapat dimuat. Periksa API Key Anda.');
+                }
+                
+                const imageUrl = imageUrlResult.status === 'fulfilled' ? imageUrlResult.value : null;
+                if (imageUrlResult.status === 'rejected') {
+                    console.error("Imagen API Error:", imageUrlResult.reason);
+                }
+                
+                const videoData = videoDataResult.status === 'fulfilled' ? videoDataResult.value : null;
+                if (videoDataResult.status === 'rejected') {
+                    console.error("YouTube API Error:", videoDataResult.reason);
+                }
 
-                if (results[0].status !== 'fulfilled') stableSetError("Gagal memuat materi pelajaran.");
-                if (results[1].status !== 'fulfilled') stableSetError("Gagal memuat gambar ilustrasi.");
-                if (results[2].status !== 'fulfilled' || !videoData) console.warn("Video pembelajaran tidak ditemukan.");
+                if (errorMessages.length > 0) {
+                    stableSetError(errorMessages.join(' '));
+                }
 
                 setContent({ text: lessonText, imageUrl, video: videoData });
                 setLessonContent(lessonText);
+            
             } catch (err) {
                 console.error("Kesalahan fatal saat memuat konten:", err);
-                setContent({ text: 'Terjadi kesalahan fatal. Coba lagi nanti.', imageUrl: null, video: null });
+                if (isMounted) {
+                    setContent({ text: 'Terjadi kesalahan fatal. Coba lagi nanti.', imageUrl: null, video: null });
+                    stableSetError("Terjadi kesalahan yang tidak terduga.");
+                }
             } finally {
-                if (isMounted) setIsLoading(false);
+                if (isMounted) {
+                    setIsLoading(false);
+                }
             }
         };
+        
         fetchContent();
+        
         return () => { isMounted = false; };
     }, [topic, level, track, subjectName, setLessonContent, updateHistory, setScreen, stableSetError]);
     
