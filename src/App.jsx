@@ -6,9 +6,10 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
-// --- PENTING: Kunci API untuk Layanan Google & Lainnya ---
-// Ganti nilai di bawah dengan API key Anda sendiri yang VALID.
-// Kegagalan memuat materi seringkali disebabkan oleh API Key yang tidak valid.
+// --- PENTING: Kunci API BARU untuk Layanan Google & Lainnya ---
+// Kunci API yang Anda bagikan sebelumnya kemungkinan besar sudah dinonaktifkan oleh Google demi keamanan.
+// Anda HARUS membuat kunci API yang BARU dari Google Cloud Console Anda.
+// Dapatkan dari: https://console.cloud.google.com/apis/credentials
 const GEMINI_API_KEY = "AIzaSyArJ1P8HanSQ_XVWX9m4kUlsIVXrBRInik";
 const YOUTUBE_API_KEY = "AIzaSyD9Rp-oSegoIDr8q9XlKkqpEL64lB2bQVE";
 
@@ -79,7 +80,7 @@ const callGeminiAPI = async (prompt, isJson = false) => {
     if (isJson) payload.generationConfig = { responseMimeType: "application/json" };
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
     const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    if (!response.ok) throw new Error(`Gemini API call failed: ${response.status}`);
+    if (!response.ok) throw new Error(`Gemini API call failed: ${response.status}. Periksa API Key dan pastikan API telah diaktifkan di Google Cloud Console.`);
     const result = await response.json();
     const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) throw new Error("Invalid Gemini API response. Periksa kembali API Key atau permintaan Anda.");
@@ -405,61 +406,54 @@ const LessonScreen = () => {
             if (!isMounted) return;
             
             setIsLoading(true);
-            setContent({ text: null, imageUrl: null, video: null });
             updateHistory({ level, track, subject: subjectName, topic, date: new Date().toISOString() });
             
             const fullContext = `${subjectName} untuk siswa ${level} ${track ? `jurusan ${track}` : ''}`;
             const textPrompt = `Sebagai guru ahli, buatkan materi lengkap tentang "${topic}" (${fullContext}) sesuai Kurikulum Merdeka. Gunakan format Markdown, termasuk header, list, bold, dan italic. Untuk rumus matematika, apit dengan '$$' (contoh: $$E=mc^2$$).`;
-            const imagePrompt = `Educational illustration, simple colorful flat design style, topic: "${topic}" (${fullContext})`;
-            const youtubeQuery = `${topic} ${subjectName}`;
-
-            try {
-                const results = await Promise.allSettled([ 
-                    callGeminiAPI(textPrompt), 
-                    callImagenAPI(imagePrompt), 
-                    callYouTubeAPI(youtubeQuery) 
-                ]);
-
-                if (!isMounted) return;
-
-                const [lessonTextResult, imageUrlResult, videoDataResult] = results;
-                
-                const errorMessages = [];
-                
-                const lessonText = lessonTextResult.status === 'fulfilled' ? lessonTextResult.value : 'Gagal memuat materi teks.';
-                if (lessonTextResult.status === 'rejected') {
-                    console.error("Gemini API Error:", lessonTextResult.reason);
-                    errorMessages.push('Materi pelajaran tidak dapat dimuat. Periksa API Key Anda.');
-                }
-                
-                const imageUrl = imageUrlResult.status === 'fulfilled' ? imageUrlResult.value : null;
-                if (imageUrlResult.status === 'rejected') {
-                    console.error("Imagen API Error:", imageUrlResult.reason);
-                }
-                
-                const videoData = videoDataResult.status === 'fulfilled' ? videoDataResult.value : null;
-                if (videoDataResult.status === 'rejected') {
-                    console.error("YouTube API Error:", videoDataResult.reason);
-                }
-
-                if (errorMessages.length > 0) {
-                    stableSetError(errorMessages.join(' '));
-                }
-
-                setContent({ text: lessonText, imageUrl, video: videoData });
-                setLessonContent(lessonText);
             
-            } catch (err) {
-                console.error("Kesalahan fatal saat memuat konten:", err);
+            // --- Fetch Text Content First (Most Important) ---
+            let lessonText;
+            try {
+                lessonText = await callGeminiAPI(textPrompt);
                 if (isMounted) {
-                    setContent({ text: 'Terjadi kesalahan fatal. Coba lagi nanti.', imageUrl: null, video: null });
-                    stableSetError("Terjadi kesalahan yang tidak terduga.");
+                    setContent(prev => ({ ...prev, text: lessonText }));
+                    setLessonContent(lessonText);
                 }
-            } finally {
+            } catch (err) {
+                console.error("Gagal memuat materi teks:", err);
                 if (isMounted) {
+                    stableSetError(`Gagal memuat materi: ${err.message}`);
+                    setContent(prev => ({ ...prev, text: "Materi pelajaran tidak dapat dimuat. Pastikan API Key Anda valid dan telah diaktifkan." }));
                     setIsLoading(false);
                 }
+                return; // Stop if text fails
             }
+
+            if (!isMounted) return;
+            setIsLoading(false); // Show text content immediately
+
+            // --- Then, fetch secondary content (image and video) ---
+            const imagePrompt = `Educational illustration, simple colorful flat design style, topic: "${topic}" (${fullContext})`;
+            const youtubeQuery = `${topic} ${subjectName}`;
+            
+            // Fetch Image
+            callImagenAPI(imagePrompt)
+                .then(imageUrl => {
+                    if (isMounted) setContent(prev => ({...prev, imageUrl}));
+                })
+                .catch(err => {
+                    console.error("Gagal memuat gambar ilustrasi:", err);
+                    // Don't set a global error, just let the placeholder show
+                });
+
+            // Fetch Video
+            callYouTubeAPI(youtubeQuery)
+                .then(videoData => {
+                    if (isMounted) setContent(prev => ({...prev, video: videoData}));
+                })
+                .catch(err => {
+                    console.error("Gagal memuat video YouTube:", err);
+                });
         };
         
         fetchContent();
@@ -475,7 +469,7 @@ const LessonScreen = () => {
                 <Header onBack={() => setScreen('subjectDashboard')} title={topic} />
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                     <div className="w-full h-48 md:h-64 bg-gray-200 flex items-center justify-center">
-                         {content.imageUrl ? <img src={content.imageUrl} alt={`Ilustrasi untuk ${topic}`} className="w-full h-full object-cover"/> : <div className="text-center text-gray-500 p-4"><FileText size={48} className="mx-auto"/><p className="mt-2">Ilustrasi tidak tersedia</p></div>}
+                         {content.imageUrl ? <img src={content.imageUrl} alt={`Ilustrasi untuk ${topic}`} className="w-full h-full object-cover"/> : <div className="text-center text-gray-500 p-4"><Loader className="animate-spin h-8 w-8 mx-auto"/><p className="mt-2 text-sm">Memuat ilustrasi...</p></div>}
                     </div>
                     <div className="p-4 sm:p-6">
                         <ContentRenderer text={content.text} />
@@ -506,7 +500,7 @@ const QuizPlayerScreen = () => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if(!lessonContent) { 
+        if(!lessonContent || lessonContent.startsWith("Gagal")) { 
             setError("Konten materi tidak ditemukan untuk membuat kuis."); 
             setScreen('subjectDashboard'); 
             return; 
