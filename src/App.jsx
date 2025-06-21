@@ -97,18 +97,21 @@ const callGeminiAPI = async (prompt, isJson = true) => {
 };
 
 /**
- * Memanggil YouTube Data API v3 untuk mencari video paling populer.
+ * Memanggil YouTube Data API v3 untuk mencari video paling relevan.
  * @param {string} query Topik pencarian video.
  * @returns {object|null} Objek berisi judul_video, youtube_video_id, youtubeEmbedUrl, youtubeWatchUrl, atau null jika gagal.
  */
 const fetchYouTubeVideo = async (query) => {
-    console.log(`[YouTube API Call] Mencari video YouTube paling populer untuk query: "${query}"`);
+    console.log(`[YouTube API Call] Mencari video YouTube paling relevan untuk query: "${query}"`);
     if (!YOUTUBE_API_KEY) {
         console.error("[YouTube API] Kunci API YouTube belum diatur.");
         return null;
     }
-    // Menggunakan order=viewCount untuk mendapatkan video paling populer
-    const YOUTUBE_API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=1&order=viewCount&key=${YOUTUBE_API_KEY}`;
+    // Menggunakan order=relevance untuk mendapatkan video paling relevan
+    // Menambahkan videoEmbeddable=true untuk memastikan video bisa di-embed
+    // Menambahkan "materi pembelajaran" ke query untuk hasil yang lebih edukatif
+    const searchKeywords = `${query} materi pembelajaran`;
+    const YOUTUBE_API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchKeywords)}&type=video&maxResults=1&order=relevance&videoEmbeddable=true&key=${YOUTUBE_API_KEY}`;
 
     try {
         const response = await fetch(YOUTUBE_API_URL);
@@ -172,13 +175,35 @@ const AppProvider = ({ children }) => {
         // Prompt Gemini HANYA untuk materi teks (ringkasan, materi lengkap, soal)
         const geminiPrompt = `
         Sebagai seorang ahli materi pelajaran, tolong proses permintaan berikut:
-        "Buatkan saya ringkasan dan materi lengkap tentang '${searchTopic}' untuk siswa ${level} ${track ? `jurusan ${track}`: ''} mata pelajaran '${subject.name}'. Pastikan materi lengkap ditulis dalam format Markdown standar yang bersih, tanpa karakter escape (\) yang tidak perlu, dan gunakan heading, list, bold, italic untuk keterbacaan yang optimal."
+        "Buatkan saya ringkasan dan materi lengkap tentang '${searchTopic}' untuk siswa ${level} ${track ? `jurusan ${track}`: ''} mata pelajaran '${subject.name}'.
+
+        Pastikan 'materi_lengkap' ditulis dalam format Markdown standar yang **SANGAT BERSIH dan TERSTRUKTUR DENGAN BENAR**.
+        Penting:
+        - Gunakan baris kosong (tekan Enter dua kali) untuk memisahkan paragraf, heading, dan item daftar agar ada spasi yang jelas.
+        - Gunakan `#` untuk heading (misal: `# Judul Utama`, `## Sub Judul`).
+        - Gunakan `*` atau `-` untuk item daftar (misal: `- Item 1`, `* Item 2`).
+        - Gunakan `**teks**` untuk tebal dan `*teks*` untuk miring.
+        - **JANGAN** gunakan karakter escape (\) di depan simbol Markdown (seperti \*, \#) jika tidak benar-benar diperlukan.
+        - Contoh format yang diinginkan:
+          \`\`\`
+          # Judul Materi
+
+          Ini adalah paragraf pengantar.
+
+          ## Konsep Penting
+
+          - Konsep A
+          - Konsep B
+
+          Ini paragraf lain setelah daftar.
+          \`\`\`
+
         Sertakan 5 soal latihan pilihan ganda (A, B, C, D, E) beserta jawaban dan penjelasan untuk setiap soal."
 
         Tolong berikan respons HANYA dalam format JSON yang valid dan bersih dengan struktur berikut:
         {
           "ringkasan": "Ringkasan singkat dan padat mengenai topik '${searchTopic}'.",
-          "materi_lengkap": "Penjelasan materi yang komprehensif dan terstruktur dengan baik dalam format Markdown. Contoh: ## Judul, - List Item, **Bold**, *Italic*.",
+          "materi_lengkap": "Penjelasan materi yang komprehensif dan terstruktur dengan baik dalam format Markdown.",
           "latihan_soal": [
             {
               "question": "Pertanyaan pertama terkait materi.",
@@ -247,7 +272,7 @@ const AppProvider = ({ children }) => {
         [
           {
             "question": "Isi pertanyaan di sini.",
-            "options": ["A. Opsi jawaban A", "B. Opsi jawaban B", "C. Opsi jawaban C", "D. Opsi jawaban D", "E. Opsi jawaban E"],
+            "options": ["A. Opsi jawaban A", "B. Opsi jawaban B", "C. Opsi jawaban C", "D. Opsi jawaban D", "E. Opsi E"],
             "correctAnswer": "A",
             "explanation": "Penjelasan detail mengapa jawaban tersebut benar dan yang lain salah."
           }
@@ -346,7 +371,7 @@ const LevelSelectionScreen = () => {
                     <Illustration className="!w-96 !h-96 -top-24 -left-24" />
                     <Brain className="w-24 h-24 mx-auto text-blue-400 animate-pulse" />
                     <h1 className="text-5xl font-bold mt-4 bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text">Bdukasi Expert</h1>
-                    <p className="text-xl text-gray-400 mt-2 mb-12">Pilih jenjang pendidikanmu untuk memulai petualangan belajar.</p>
+                    <p className="text-xl text-gray-400 mt-2 mb-12">Pilih jenjang pendidikanu untuk memulai petualangan belajar.</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {Object.keys(curriculum).map((lvl, index) => <button key={lvl} onClick={() => { setLevel(lvl); setScreen(lvl === 'SMA' ? 'trackSelection' : 'subjectSelection'); }} className="p-8 bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl shadow-lg hover:shadow-blue-500/20 hover:border-blue-500 hover:-translate-y-2 transition-all text-2xl font-bold flex flex-col items-center justify-center gap-4 cursor-pointer" style={{...motionVariants.item, animation: `fadeInUp 0.5s ease-out ${index * 0.1 + 0.3}s forwards`}}><School size={40} /> {lvl}</button>)}
                     </div>
@@ -686,6 +711,23 @@ styleSheet.innerText = `
     width: 100%;
     height: 100%;
     border: none; /* Hapus border default iframe */
+}
+/* Tambahan CSS untuk memastikan spasi antar elemen Markdown jika prose default tidak cukup */
+.prose-invert p,
+.prose-invert ul,
+.prose-invert ol,
+.prose-invert h1,
+.prose-invert h2,
+.prose-invert h3,
+.prose-invert h4,
+.prose-invert h5,
+.prose-invert h6 {
+    margin-bottom: 1em; /* Berikan spasi bawah yang cukup */
+}
+
+.prose-invert ul li,
+.prose-invert ol li {
+    margin-bottom: 0.5em; /* Spasi antar item list */
 }
 `;
 document.head.appendChild(styleSheet);
