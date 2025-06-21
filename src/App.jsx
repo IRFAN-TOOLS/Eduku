@@ -16,7 +16,8 @@ const motionVariants = {
 
 // --- KONFIGURASI PENTING ---
 // Catatan: Sebaiknya simpan API Key di environment variable untuk keamanan.
-const GEMINI_API_KEY = "AIzaSyArJ1P8HanSQ_XVWX9m4kUlsIVXrBRInik";
+// Biarkan kosong jika tidak memiliki kunci API sendiri, sistem akan menggunakan proxy.
+const GEMINI_API_KEY = "";
 
 // --- App Context ---
 const AppContext = createContext(null);
@@ -56,20 +57,14 @@ const iconMap = { School, Brain, BookOpen, Youtube, Lightbulb, FileText, ArrowLe
 // --- API Helper & Utilities ---
 const callGeminiAPI = async (prompt, isJson = true) => {
     console.log("[API Call] Memanggil Gemini API...");
-    if (!GEMINI_API_KEY) throw new Error("Kunci API Gemini belum diatur.");
-    // Model yang digunakan adalah gemini-1.5-flash. Anda bisa menggantinya jika perlu.
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
     
     const payload = { 
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-            // Menaikkan timeout tidak bisa dilakukan di client, ini hanya contoh konfigurasi.
-            // Batas waktu sesungguhnya diatur oleh server Google.
-        }
     };
 
     if (isJson) {
-        payload.generationConfig.response_mime_type = "application/json";
+        payload.generationConfig = { response_mime_type: "application/json" };
     }
     
     try {
@@ -89,7 +84,6 @@ const callGeminiAPI = async (prompt, isJson = true) => {
         const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!text) throw new Error("Respons API tidak valid atau kosong.");
         
-        // Membersihkan markdown jika respons JSON terbungkus di dalamnya
         const cleanedText = text.replace(/^```json\s*|```$/g, '').trim();
         return isJson ? JSON.parse(cleanedText) : cleanedText;
 
@@ -102,15 +96,8 @@ const callGeminiAPI = async (prompt, isJson = true) => {
 
 const getYouTubeEmbedUrl = (embedCode) => {
     if (!embedCode || typeof embedCode !== 'string') return null;
-    // Mencari URL dari atribut src, baik dengan kutip ganda maupun tunggal
     const match = embedCode.match(/src=(?:"|')([^"']+)(?:"|')/);
-    const url = match ? match[1] : null;
-    console.log(`[YouTube] Ekstraksi URL dari embed: "${embedCode}" -> "${url}"`);
-    // Memastikan URL adalah URL embed yang valid
-    if (url && url.includes('youtube.com/embed')) {
-        return url;
-    }
-    return null;
+    return match ? match[1] : null;
 };
 
 // --- App Provider ---
@@ -122,7 +109,7 @@ const AppProvider = ({ children }) => {
     const [learningData, setLearningData] = useState(null);
     const [recommendations, setRecommendations] = useState([]);
     const [bankSoal, setBankSoal] = useState([]);
-    const [history, setHistory] = useLocalStorage('bdukasi-expert-history-v5', []); // Versi baru
+    const [history, setHistory] = useLocalStorage('bdukasi-expert-history-v6', []);
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [error, setError] = useState(null);
@@ -143,27 +130,33 @@ const AppProvider = ({ children }) => {
         const { level, track, subject } = contextValue;
         if (!isFromHistory) addHistory({ topic: searchTopic, level, track, subjectName: subject.name });
         
-        // Prompt diperbarui sesuai permintaan pengguna
         const prompt = `
-        Sebagai seorang ahli materi pelajaran, tolong proses permintaan berikut:
-        "Buatkan saya ringkasan dan materi lengkap tentang '${searchTopic}' untuk siswa ${level} ${track ? `jurusan ${track}`: ''} mata pelajaran '${subject.name}'. Beserta video YouTube pembelajaran yang relevan, pastikan kamu mengirimkannya dalam bentuk kode embed HTML iframe lengkap dengan ID unik di dalamnya. Kemudian, sertakan 5 soal latihan pilihan ganda (A, B, C, D, E) beserta jawaban dan penjelasan untuk setiap soal."
+        Tolong proses permintaan berikut berdasarkan detail yang diberikan.
 
-        Tolong berikan respons HANYA dalam format JSON yang valid dan bersih dengan struktur berikut:
+        Permintaan Pengguna: 
+        "Buatkan saya materi lengkap dan ringkasan tentang {materi_yang_ingin_dicari}. Kasih juga video pembelajaran terkait dari YouTube melalui format kode embed yang telah dikasih video id dari video YouTube pembelajaran terkait sehingga tinggal copy paste langsung muncul di halaman website, juga kasih soal pilihan ganda terkait 5 butir dengan struktur: {Soal}, {Jawabannya}, {Penjelasan}. Buat dengan kurikulum terbaru Indonesia dan sesuai jenjang {jenjang_pendidikan}"
+
+        DETAIL UNTUK AI:
+        - materi_yang_ingin_dicari: "${searchTopic}"
+        - jenjang_pendidikan: "${level}${track ? ` - Jurusan ${track}` : ''} - ${subject.name}"
+
+        STRUKTUR OUTPUT (WAJIB JSON):
+        Berikan respons HANYA dalam format JSON yang valid dan bersih dengan struktur di bawah ini. Pastikan materi lengkap ditulis dalam format Markdown.
+
         {
           "judul_video": "Judul video YouTube yang relevan",
-          "kode_embed": "<iframe width='560' height='315' src='https://www.youtube.com/embed/VIDEO_ID' title='YouTube video player' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' allowfullscreen id='youtube-embed-${new Date().getTime()}'></iframe>",
+          "kode_embed": "<iframe width='560' height='315' src='https://www.youtube.com/embed/VIDEO_ID' title='YouTube video player' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' allowfullscreen></iframe>",
           "ringkasan": "Ringkasan singkat dan padat mengenai topik '${searchTopic}'.",
-          "materi_lengkap": "Penjelasan materi yang komprehensif dan terstruktur dengan baik dalam format Markdown. Gunakan heading, list, dan tebal untuk keterbacaan.",
+          "materi_lengkap": "Penjelasan materi yang komprehensif dan terstruktur dalam format Markdown (gunakan heading, list, bold).",
           "latihan_soal": [
             {
-              "question": "Pertanyaan pertama terkait materi.",
-              "options": ["Opsi A", "Opsi B", "Opsi C", "Opsi D", "Opsi E"],
-              "correctAnswer": "A",
-              "explanation": "Penjelasan mengapa jawaban A adalah yang benar."
+              "soal": "Pertanyaan pertama terkait materi.",
+              "pilihan": ["Opsi A", "Opsi B", "Opsi C", "Opsi D", "Opsi E"],
+              "jawaban": "A",
+              "penjelasan": "Penjelasan mengapa jawaban A adalah yang benar."
             }
           ]
         }
-        Pastikan kode embed YouTube valid dan materi lengkap ditulis dalam format Markdown.
         `;
 
         try { 
@@ -201,18 +194,25 @@ const AppProvider = ({ children }) => {
         
         const { level, track, subject } = contextValue;
 
-        // Prompt diperbarui untuk menerima jumlah soal
         const prompt = `
-        Tolong proses permintaan berikut:
-        "Buatkan saya soal tentang '${topic}' berjumlah ${count} butir untuk mata pelajaran '${subject.name}' level ${level} ${track ? `jurusan ${track}` : ''}. Setiap soal harus dalam bentuk pilihan ganda (A, B, C, D, E) beserta jawaban dan penjelasan yang jelas."
+        Tolong proses permintaan berikut berdasarkan detail yang diberikan.
+        
+        Permintaan Pengguna:
+        "Buatkan saya soal {jumlah} butir Dari materi {materi} Dengan jenjang {jenjang}. Yang berstruktur : {Soal}, {Jawabannya}, {Penjelasan}"
 
-        Berikan respons HANYA dalam format JSON array dari objek, dengan struktur berikut:
+        DETAIL UNTUK AI:
+        - jumlah: ${count}
+        - materi: "${topic}"
+        - jenjang: "${level}${track ? ` - Jurusan ${track}` : ''} - ${subject.name}"
+        
+        STRUKTUR OUTPUT (WAJIB JSON):
+        Berikan respons HANYA dalam format JSON array dari objek, dengan setiap objek berstruktur:
         [
           {
-            "question": "Isi pertanyaan di sini.",
-            "options": ["Opsi jawaban A", "Opsi jawaban B", "Opsi jawaban C", "Opsi jawaban D", "Opsi jawaban E"],
-            "correctAnswer": "A",
-            "explanation": "Penjelasan detail mengapa jawaban tersebut benar dan yang lain salah."
+            "soal": "Isi pertanyaan di sini.",
+            "pilihan": ["Pilihan jawaban A", "Pilihan jawaban B", "Pilihan jawaban C", "Pilihan jawaban D", "Pilihan jawaban E"],
+            "jawaban": "A",
+            "penjelasan": "Penjelasan detail mengapa jawaban tersebut benar dan yang lain salah."
           }
         ]
         `;
@@ -247,7 +247,7 @@ const AppProvider = ({ children }) => {
 export default function App() {
     return (
         <AppProvider>
-            <div className="bg-gray-900 min-h-screen text-gray-200 font-sans overflow-hidden relative">
+            <div className="bg-gray-900 min-h-screen text-gray-200 font-sans overflow-x-hidden relative">
                 <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-900/20 via-transparent to-purple-900/20"></div>
                 <ScreenContainer />
@@ -258,8 +258,16 @@ export default function App() {
 }
 
 const ScreenContainer = () => {
-    const { screen, isLoading, loadingMessage } = useContext(AppContext);
+    const { screen, isLoading, loadingMessage, setScreen, subject, level } = useContext(AppContext);
+
+    const hasNavbar = ['subjectSelection', 'trackSelection', 'subjectDashboard', 'lesson', 'bankSoal'].includes(screen);
+    let backTarget = 'levelSelection';
+    if (screen === 'subjectSelection') backTarget = level === 'SMA' ? 'trackSelection' : 'levelSelection';
+    if (screen === 'subjectDashboard') backTarget = 'subjectSelection';
+    if (screen === 'lesson' || screen === 'bankSoal') backTarget = 'subjectDashboard';
+
     if (isLoading) return <LoadingSpinner message={loadingMessage} />;
+    
     const screens = {
         levelSelection: <LevelSelectionScreen key="level" />,
         trackSelection: <TrackSelectionScreen key="track" />,
@@ -268,13 +276,37 @@ const ScreenContainer = () => {
         lesson: <LearningMaterialScreen key="lesson" />,
         bankSoal: <BankSoalScreen key="bankSoal" />,
     };
-    return <div className="relative h-full w-full">{screens[screen]}</div>;
+
+    return (
+        <div className="relative h-full w-full">
+            {hasNavbar && <Navbar onBack={() => setScreen(backTarget)} title={subject?.name}/>}
+            <main className={hasNavbar ? 'pt-24' : ''}>
+                {screens[screen]}
+            </main>
+        </div>
+    );
 };
 
-// --- Komponen UI, Ilustrasi, & Modal ---
+// --- Navbar & UI ---
+const Navbar = ({ onBack, title }) => (
+    <header className="fixed top-0 left-0 right-0 z-20 bg-gray-900/70 backdrop-blur-lg border-b border-gray-700/50 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-20">
+                <button onClick={onBack} className="flex items-center gap-2 text-blue-400 font-semibold hover:text-blue-300 transition-colors">
+                    <ArrowLeft size={20} />
+                    <span className="hidden sm:block">Kembali</span>
+                </button>
+                <div className="text-center">
+                     <h1 className="text-xl font-bold text-gray-200">{title || "Bdukasi Expert"}</h1>
+                </div>
+                 <div className="w-24"></div> {/* Spacer */}
+            </div>
+        </div>
+    </header>
+);
+
 const DynamicIcon = ({ name, ...props }) => { const IconComponent = iconMap[name]; return IconComponent ? <IconComponent {...props} /> : <HelpCircle {...props} />; };
 const AnimatedScreen = ({ children, customKey }) => <div key={customKey} className="p-4 sm:p-8 max-w-5xl mx-auto" style={{animation: 'screenIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards'}}>{children}</div>;
-const BackButton = ({ onClick }) => <button onClick={onClick} className="flex items-center gap-2 text-blue-400 font-semibold hover:underline mb-8 absolute top-8 left-8 z-10"><ArrowLeft size={20} /> Kembali</button>;
 const InfoCard = ({ icon, title, children, className = '' }) => <div className={`bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl shadow-lg overflow-hidden ${className}`} style={{animation: 'fadeInUp 0.5s ease-out forwards'}}><div className="p-4 border-b border-gray-700 flex items-center gap-3">{icon && <div className="text-blue-400">{React.cloneElement(icon, { size: 24 })}</div>}<h2 className="text-xl font-bold text-gray-100">{title}</h2></div><div className="p-4 sm:p-6">{children}</div></div>;
 const LoadingSpinner = ({ message }) => <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900"><Loader className="w-16 h-16 text-blue-500 animate-spin" /><p className="text-xl font-semibold mt-6 text-gray-300 text-center max-w-md">{message || 'AI sedang menyusun materi...'}</p></div>;
 const ErrorMessage = ({ message }) => <div className="bg-red-900/50 border-l-4 border-red-500 text-red-300 p-4 rounded-r-lg mt-4 w-full max-w-xl mx-auto flex items-center gap-4"><AlertTriangle className="h-6 w-6 text-red-500" /><p className="font-bold">{message}</p></div>;
@@ -324,8 +356,7 @@ const TrackSelectionScreen = () => {
     const { setScreen, setTrack } = useContext(AppContext);
     return (
         <AnimatedScreen customKey="track">
-            <BackButton onClick={() => setScreen('levelSelection')} />
-            <div className="text-center pt-16">
+            <div className="text-center">
                 <h1 className="text-4xl font-bold mb-12">Pilih Jurusan</h1>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {Object.keys(curriculum.SMA.tracks).map((trackName, index) => <button key={trackName} onClick={() => { setTrack(trackName); setScreen('subjectSelection'); }} className="p-8 bg-gray-800/50 border border-gray-700 rounded-2xl shadow-lg hover:shadow-blue-500/20 hover:border-blue-500 hover:-translate-y-2 transition-all text-2xl font-bold" style={{...motionVariants.item, animation: `fadeInUp 0.5s ease-out ${index * 0.1 + 0.3}s forwards`}}>{trackName}</button>)}
@@ -338,12 +369,10 @@ const TrackSelectionScreen = () => {
 const SubjectSelectionScreen = () => {
     const { level, track, setScreen, setSubject } = useContext(AppContext);
     const subjects = level === 'SMA' ? curriculum.SMA.tracks[track] : curriculum[level].subjects;
-    const backScreen = level === 'SMA' ? 'trackSelection' : 'levelSelection';
-
+    
     return (
         <AnimatedScreen customKey="subject">
-             <BackButton onClick={() => setScreen(backScreen)} />
-            <div className="pt-16">
+            <div>
                  <h1 className="text-4xl font-bold mb-12 text-center">Pilih Mata Pelajaran</h1>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                     {subjects.map((s, index) => <button key={s.name} onClick={() => { setSubject(s); setScreen('subjectDashboard'); }} className="p-4 bg-gray-800/50 border border-gray-700 rounded-xl flex flex-col items-center justify-center text-center hover:border-blue-500 hover:-translate-y-1 transition-all aspect-square shadow-lg" style={{...motionVariants.item, animation: `fadeInUp 0.5s ease-out ${index * 0.05 + 0.3}s forwards`}}><DynamicIcon name={s.iconName} size={48} className="text-blue-400" /><span className="font-semibold text-gray-200 text-sm text-center mt-3">{s.name}</span></button>)}
@@ -354,7 +383,7 @@ const SubjectSelectionScreen = () => {
 };
 
 const SubjectDashboardScreen = () => {
-    const { subject, fetchLearningMaterial, fetchRecommendations, recommendations, error, setError, history, setScreen } = useContext(AppContext);
+    const { subject, fetchLearningMaterial, fetchRecommendations, recommendations, error, setError, history } = useContext(AppContext);
     const [inputValue, setInputValue] = useState('');
     const [activeTab, setActiveTab] = useState('rekomendasi');
 
@@ -376,8 +405,7 @@ const SubjectDashboardScreen = () => {
 
     return (
         <AnimatedScreen customKey="dashboard">
-            <BackButton onClick={() => setScreen('subjectSelection')} />
-            <div className="text-center pt-16"><DynamicIcon name={subject.iconName} size={80} className="text-blue-400 mx-auto mb-4" /><h1 className="text-5xl font-bold">Mata Pelajaran: {subject.name}</h1></div>
+            <div className="text-center"><DynamicIcon name={subject.iconName} size={80} className="text-blue-400 mx-auto mb-4" /><h1 className="text-5xl font-bold">Mata Pelajaran: {subject.name}</h1></div>
             <div className="w-full max-w-2xl mx-auto my-12">
                 <form onSubmit={handleSearchSubmit}>
                     <div className="relative">
@@ -453,7 +481,7 @@ const BankSoalGenerator = () => {
                         value={count} 
                         onChange={e => setCount(parseInt(e.target.value, 10))}
                         min="1"
-                        max="20" // Batasi agar tidak terlalu banyak
+                        max="20" 
                         placeholder="Jumlah Soal"
                         className='w-full sm:w-1/3 p-3 bg-gray-700 rounded-lg border border-gray-600 focus:ring-2 focus:ring-blue-500'
                     />
@@ -476,8 +504,7 @@ const LearningMaterialScreen = () => {
 
     return (
         <AnimatedScreen customKey="lesson">
-            <BackButton onClick={() => setScreen('subjectDashboard')} />
-            <div className="space-y-8 pt-16">
+            <div className="space-y-8">
                 <h1 className="text-3xl sm:text-5xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text">{topic}</h1>
                 {judul_video && youtubeEmbedUrl && <InfoCard icon={<Youtube />} title={judul_video}><div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden shadow-lg"><iframe className="w-full h-full" src={youtubeEmbedUrl} title={judul_video} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe></div></InfoCard>}
                 {ringkasan && <InfoCard icon={<Lightbulb />} title="Ringkasan"><p className="text-gray-300 leading-relaxed">{ringkasan}</p></InfoCard>}
@@ -493,14 +520,13 @@ const BankSoalScreen = () => {
     const { bankSoal, setScreen } = useContext(AppContext);
     return (
         <AnimatedScreen customKey="bankSoal">
-            <BackButton onClick={() => setScreen('subjectDashboard')} />
-            <div className="pt-16"><InfoCard title="Bank Soal Latihan">{bankSoal && bankSoal.length > 0 ? <QuizPlayer questions={bankSoal} /> : <p className="text-center text-gray-400 p-4">Gagal memuat soal atau tidak ada soal tersedia untuk topik ini. Silakan coba lagi.</p>}</InfoCard></div>
+            <div><InfoCard title="Bank Soal Latihan">{bankSoal && bankSoal.length > 0 ? <QuizPlayer questions={bankSoal} /> : <p className="text-center text-gray-400 p-4">Gagal memuat soal atau tidak ada soal tersedia untuk topik ini. Silakan coba lagi.</p>}</InfoCard></div>
             <Footer />
         </AnimatedScreen>
     );
 };
 
-// --- Komponen Interaktif: QuizPlayer & Footer ---
+// --- Komponen Interaktif: QuizPlayer (DIPERBARUI) & Footer ---
 const QuizPlayer = ({ questions }) => {
     const [answers, setAnswers] = useState({});
     const [isSubmitted, setSubmitted] = useState(false);
@@ -512,14 +538,14 @@ const QuizPlayer = ({ questions }) => {
     const score = useMemo(() => {
         if (!isSubmitted) return 0;
         return questions.reduce((acc, q, i) => {
-            const selectedAnswer = answers[i];
+            const selectedAnswer = answers[i]; // e.g., "Pilihan B"
             if (!selectedAnswer) return acc;
             
-            // Mencocokkan jawaban berdasarkan prefix (misal "A.") atau isi teks lengkap
-            const isCorrectByPrefix = selectedAnswer.startsWith(q.correctAnswer + ".");
-            const isCorrectByContent = selectedAnswer === q.correctAnswer;
+            // Mencocokkan jawaban berdasarkan prefix (misal "B.") atau isi teks lengkap
+            const answerPrefix = q.jawaban + "."; // e.g., "B."
+            const isCorrect = selectedAnswer.startsWith(answerPrefix);
             
-            return acc + (isCorrectByPrefix || isCorrectByContent ? 1 : 0);
+            return acc + (isCorrect ? 1 : 0);
         }, 0);
     }, [answers, questions, isSubmitted]);
 
@@ -528,11 +554,12 @@ const QuizPlayer = ({ questions }) => {
             {isSubmitted && <div className="text-center p-4 rounded-lg bg-blue-900/50 border border-blue-700"><h3 className="text-2xl font-bold">Skor Kamu: {Math.round((score / questions.length) * 100)}%</h3><p>Benar {score} dari {questions.length} pertanyaan.</p></div>}
             {questions.map((q, qIndex) => (
                 <div key={qIndex}>
-                    <p className="font-semibold text-lg mb-3">{qIndex + 1}. {q.question}</p>
-                    <div className="space-y-2">{q.options?.map((opt, oIndex) => {
+                    <p className="font-semibold text-lg mb-3">{qIndex + 1}. {q.soal}</p>
+                    <div className="space-y-2">{q.pilihan?.map((opt, oIndex) => {
                         const isSelected = answers[qIndex] === opt;
-                        // Jawaban benar jika opsi dimulai dengan `correctAnswer` (misal, "A.")
-                        const isCorrect = opt.startsWith(q.correctAnswer + ".");
+                        const answerPrefix = q.jawaban + ".";
+                        const isCorrect = opt.startsWith(answerPrefix);
+
                         let stateClass = "border-gray-600 hover:border-blue-500 hover:bg-gray-700";
                         if (isSubmitted) { 
                             if (isCorrect) stateClass = "bg-green-800/60 border-green-500 text-white"; 
@@ -543,7 +570,7 @@ const QuizPlayer = ({ questions }) => {
                         }
                         return <button key={oIndex} onClick={() => !isSubmitted && setAnswers(p => ({ ...p, [qIndex]: opt }))} disabled={isSubmitted} className={`w-full text-left p-3 rounded-lg border-2 transition-all duration-200 ${stateClass} disabled:cursor-not-allowed`}>{opt}</button>})}
                     </div>
-                    {isSubmitted && q.explanation && <div className="mt-4 p-4 bg-gray-700/50 rounded-lg text-sm"><p className="font-bold text-gray-200 flex items-center gap-2"><CheckCircle size={16}/> Penjelasan:</p><p className="text-gray-300 mt-2 pl-1">{q.explanation}</p></div>}
+                    {isSubmitted && q.penjelasan && <div className="mt-4 p-4 bg-gray-700/50 rounded-lg text-sm"><p className="font-bold text-gray-200 flex items-center gap-2"><CheckCircle size={16}/> Penjelasan:</p><p className="text-gray-300 mt-2 pl-1">{q.penjelasan}</p></div>}
                 </div>
             ))}
             <div className="pt-4">
