@@ -17,6 +17,7 @@ const motionVariants = {
 // --- KONFIGURASI PENTING ---
 // Catatan: Sebaiknya simpan API Key di environment variable untuk keamanan.
 const GEMINI_API_KEY = "AIzaSyArJ1P8HanSQ_XVWX9m4kUlsIVXrBRInik";
+const YOUTUBE_API_KEY = "AIzaSyD9Rp-oSegoIDr8q9XlKkqpEL64lB2bQVE"; // API Key YouTube dari user
 
 // --- App Context ---
 const AppContext = createContext(null);
@@ -57,15 +58,11 @@ const iconMap = { School, Brain, BookOpen, Youtube, Lightbulb, FileText, ArrowLe
 const callGeminiAPI = async (prompt, isJson = true) => {
     console.log("[API Call] Memanggil Gemini API...");
     if (!GEMINI_API_KEY) throw new Error("Kunci API Gemini belum diatur.");
-    // Model yang digunakan adalah gemini-1.5-flash. Anda bisa menggantinya jika perlu.
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
 
     const payload = {
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-            // Menaikkan timeout tidak bisa dilakukan di client, ini hanya contoh konfigurasi.
-            // Batas waktu sesungguhnya diatur oleh server Google.
-        }
+        generationConfig: {}
     };
 
     if (isJson) {
@@ -81,47 +78,63 @@ const callGeminiAPI = async (prompt, isJson = true) => {
 
         if (!response.ok) {
             const errorBody = await response.json();
-            throw new Error(`Permintaan API gagal: ${errorBody.error?.message || 'Error tidak diketahui'}`);
+            throw new Error(`Permintaan API Gemini gagal: ${errorBody.error?.message || 'Error tidak diketahui'}`);
         }
 
         const result = await response.json();
         console.log("[API Success] Respons diterima dari Gemini.");
         const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) throw new Error("Respons API tidak valid atau kosong.");
+        if (!text) throw new Error("Respons API Gemini tidak valid atau kosong.");
 
-        // Membersihkan markdown jika respons JSON terbungkus di dalamnya
         const cleanedText = text.replace(/^```json\s*|```$/g, '').trim();
         return isJson ? JSON.parse(cleanedText) : cleanedText;
 
     } catch (error) {
-        console.error("[API Exception] Terjadi kesalahan:", error);
+        console.error("[API Exception] Terjadi kesalahan Gemini:", error);
         throw error;
     }
 };
 
 /**
- * Mengekstrak URL tontonan YouTube standar dari kode embed HTML.
- * Ini akan digunakan untuk tombol "Tonton di YouTube" sebagai fallback.
- * @param {string} embedCode Kode embed HTML lengkap dari Gemini.
- * @returns {string|null} URL tontonan YouTube standar (misal: "https://www.youtube.com/watch?v=VIDEO_ID") atau null jika gagal.
+ * Memanggil YouTube Data API v3 untuk mencari video paling populer.
+ * @param {string} query Topik pencarian video.
+ * @returns {object|null} Objek berisi judul_video, youtube_video_id, youtubeEmbedUrl, youtubeWatchUrl, atau null jika gagal.
  */
-const getYouTubeWatchUrlFromEmbedCode = (embedCode) => {
-    if (!embedCode || typeof embedCode !== 'string') return null;
-
-    let videoId = null;
-    const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
-    const url = srcMatch ? srcMatch[1] : embedCode;
-
-    // Coba ekstrak ID dari berbagai pola URL YouTube
-    const idMatch = url.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    if (idMatch) {
-        videoId = idMatch[1];
+const fetchYouTubeVideo = async (query) => {
+    console.log(`[YouTube API Call] Mencari video YouTube paling populer untuk query: "${query}"`);
+    if (!YOUTUBE_API_KEY) {
+        console.error("[YouTube API] Kunci API YouTube belum diatur.");
+        return null;
     }
+    // Menggunakan order=viewCount untuk mendapatkan video paling populer
+    const YOUTUBE_API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=1&order=viewCount&key=${YOUTUBE_API_KEY}`;
 
-    if (videoId) {
-        return `https://www.youtube.com/watch?v=${videoId}`;
+    try {
+        const response = await fetch(YOUTUBE_API_URL);
+        if (!response.ok) {
+            const errorBody = await response.json();
+            throw new Error(`Permintaan YouTube API gagal: ${errorBody.error?.message || 'Error tidak diketahui'}`);
+        }
+        const data = await response.json();
+        console.log("[YouTube API Success] Respons diterima:", data);
+
+        if (data.items && data.items.length > 0) {
+            const video = data.items[0];
+            const videoId = video.id.videoId;
+            return {
+                judul_video: video.snippet.title,
+                youtube_video_id: videoId,
+                youtubeEmbedUrl: `https://www.youtube.com/embed/${videoId}`,
+                youtubeWatchUrl: `https://www.youtube.com/watch?v=${videoId}`
+            };
+        } else {
+            console.log("[YouTube API] Tidak ada video ditemukan untuk query ini.");
+            return null;
+        }
+    } catch (error) {
+        console.error("[YouTube API Exception] Terjadi kesalahan YouTube:", error);
+        return null;
     }
-    return null;
 };
 
 
@@ -150,20 +163,18 @@ const AppProvider = ({ children }) => {
         if (!searchTopic || !contextValue.level || !contextValue.subject) {
              console.error("[Fetch Materi] Gagal: Konteks tidak lengkap (level/mapel belum dipilih)."); return;
         }
-        setIsLoading(true); setLoadingMessage('AI sedang menyusun materi lengkap untukmu, mohon tunggu...'); setError(null);
+        setIsLoading(true); setLoadingMessage('AI sedang menyusun materi dan mencari video untukmu, mohon tunggu...'); setError(null);
         setLearningData(null); setScreen('lesson');
         const { level, track, subject } = contextValue;
         if (!isFromHistory) addHistory({ topic: searchTopic, level, track, subjectName: subject.name });
 
-        // Prompt meminta kode_embed langsung, seperti yang sudah berhasil Anda tempel manual
-        const prompt = `
+        // Prompt Gemini HANYA untuk materi teks (ringkasan, materi lengkap, soal)
+        const geminiPrompt = `
         Sebagai seorang ahli materi pelajaran, tolong proses permintaan berikut:
-        "Buatkan saya ringkasan dan materi lengkap tentang '${searchTopic}' untuk siswa ${level} ${track ? `jurusan ${track}`: ''} mata pelajaran '${subject.name}'. Beserta video YouTube pembelajaran yang relevan, sertakan dalam bentuk kode embed HTML iframe lengkap."
+        "Buatkan saya ringkasan dan materi lengkap tentang '${searchTopic}' untuk siswa ${level} ${track ? `jurusan ${track}`: ''} mata pelajaran '${subject.name}'. Sertakan 5 soal latihan pilihan ganda (A, B, C, D, E) beserta jawaban dan penjelasan untuk setiap soal."
 
         Tolong berikan respons HANYA dalam format JSON yang valid dan bersih dengan struktur berikut:
         {
-          "judul_video": "Judul video YouTube yang relevan",
-          "kode_embed": "<iframe width='560' height='315' src='https://www.youtube.com/embed/VIDEO_ID' title='YouTube video player' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' allowFullScreen id='youtube-embed-UNIQUE_ID'></iframe>",
           "ringkasan": "Ringkasan singkat dan padat mengenai topik '${searchTopic}'.",
           "materi_lengkap": "Penjelasan materi yang komprehensif dan terstruktur dengan baik dalam format Markdown. Gunakan heading, list, dan tebal untuk keterbacaan.",
           "latihan_soal": [
@@ -175,22 +186,33 @@ const AppProvider = ({ children }) => {
             }
           ]
         }
-        Pastikan kode embed YouTube valid (src mengarah ke youtube.com/embed/VIDEO_ID) dan materi lengkap ditulis dalam format Markdown.
+        Pastikan materi lengkap ditulis dalam format Markdown.
         `;
 
         try {
-            const data = await callGeminiAPI(prompt);
-            // Kita akan langsung menggunakan data.kode_embed untuk dangerouslySetInnerHTML
-            // Dan ekstrak URL tontonan untuk fallback link
-            data.youtubeWatchUrl = getYouTubeWatchUrlFromEmbedCode(data.kode_embed);
+            // Fetch text content from Gemini
+            const geminiData = await callGeminiAPI(geminiPrompt);
 
-            setLearningData({ topic: searchTopic, ...data });
-            console.log("[Fetch Materi] Sukses, data materi diatur. Kode embed diterima:", data.kode_embed);
-            console.log("[Fetch Materi] URL Tontonan YouTube untuk fallback:", data.youtubeWatchUrl);
+            // Fetch video data from YouTube API
+            const youtubeVideoData = await fetchYouTubeVideo(searchTopic);
+
+            // Combine data and update state
+            setLearningData({
+                topic: searchTopic,
+                ...geminiData,
+                judul_video: youtubeVideoData?.judul_video || 'Video Pembelajaran Tidak Tersedia',
+                youtube_video_id: youtubeVideoData?.youtube_video_id || null, // Simpan ID video
+                youtubeEmbedUrl: youtubeVideoData?.youtubeEmbedUrl || null,
+                youtubeWatchUrl: youtubeVideoData?.youtubeWatchUrl || null,
+            });
+            console.log("[Fetch Materi] Sukses, data materi dan video diatur.");
         } catch (err) {
             console.error("[Fetch Materi] Error:", err);
-            setError(`Gagal memuat materi: ${err.message}. Coba lagi nanti.`); setScreen('subjectDashboard');
-        } finally { setIsLoading(false); }
+            setError(`Gagal memuat materi: ${err.message}. Coba lagi nanti.`);
+            setScreen('subjectDashboard');
+        } finally {
+            setIsLoading(false);
+        }
     }, [contextValue, addHistory]);
 
     const fetchRecommendations = useCallback(async () => {
@@ -486,13 +508,14 @@ const ListItem = ({text, onClick}) => <button onClick={onClick} className="w-ful
 const LearningMaterialScreen = () => {
     const { learningData, setScreen } = useContext(AppContext);
     if (!learningData) return <div className="text-center p-8">Materi tidak ditemukan atau gagal dimuat. <button onClick={() => setScreen('subjectDashboard')} className="text-blue-500 underline">Kembali ke Dashboard</button></div>;
-    const { topic, ringkasan, materi_lengkap, judul_video, kode_embed, youtubeWatchUrl, latihan_soal } = learningData;
+    const { topic, ringkasan, materi_lengkap, judul_video, youtubeEmbedUrl, youtubeWatchUrl, latihan_soal } = learningData;
 
     useEffect(() => {
-        // Log kode_embed saat komponen ini dirender untuk debugging
-        console.log("[LearningMaterialScreen] Kode embed yang diterima:", kode_embed);
-        console.log("[LearningMaterialScreen] URL tontonan untuk fallback:", youtubeWatchUrl);
-    }, [kode_embed, youtubeWatchUrl]);
+        // Log URL video yang akan digunakan untuk debugging
+        console.log("[LearningMaterialScreen] Judul Video:", judul_video);
+        console.log("[LearningMaterialScreen] URL Embed YouTube:", youtubeEmbedUrl);
+        console.log("[LearningMaterialScreen] URL Tontonan YouTube:", youtubeWatchUrl);
+    }, [judul_video, youtubeEmbedUrl, youtubeWatchUrl]);
 
 
     return (
@@ -500,17 +523,21 @@ const LearningMaterialScreen = () => {
             <BackButton onClick={() => setScreen('subjectDashboard')} />
             <div className="space-y-8 pt-16">
                 <h1 className="text-3xl sm:text-5xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text">{topic}</h1>
-                {judul_video && kode_embed ? (
+                {/* Menampilkan video hanya jika youtubeEmbedUrl tersedia */}
+                {judul_video && youtubeEmbedUrl ? (
                     <InfoCard icon={<Youtube />} title={judul_video}>
                         <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden shadow-lg">
-                            {/* Render iframe langsung menggunakan dangerouslySetInnerHTML */}
-                            {/* Tambahkan key unik berdasarkan kode_embed untuk memaksa React me-remount iframe */}
-                            <div
-                                key={kode_embed}
-                                dangerouslySetInnerHTML={{ __html: kode_embed }}
-                                // Pastikan iframe responsif
-                                style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}
-                            />
+                            {/* Menggunakan iframe langsung dengan src dari YouTube API */}
+                            <iframe
+                                key={youtubeEmbedUrl} // Gunakan URL sebagai key untuk memaksa re-render jika URL berubah
+                                className="w-full h-full"
+                                src={youtubeEmbedUrl}
+                                title={judul_video}
+                                frameBorder="0"
+                                // Atribut allow diisi penuh untuk kompatibilitas
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowFullScreen
+                            ></iframe>
                         </div>
                         {/* Tombol fallback jika video tidak bisa di-embed */}
                         <div className="text-center mt-4">
@@ -525,7 +552,7 @@ const LearningMaterialScreen = () => {
                 ) : (
                     <InfoCard icon={<Youtube />} title="Video Pembelajaran">
                         <p className="text-center text-gray-400">Maaf, video pembelajaran tidak tersedia atau tidak dapat dimuat saat ini.</p>
-                        <p className="text-center text-gray-500 text-sm mt-2">Ini mungkin disebabkan oleh video yang tidak ada, pembatasan geografis, atau masalah teknis dengan video yang diberikan oleh AI.</p>
+                        <p className="text-center text-gray-500 text-sm mt-2">Ini mungkin disebabkan oleh video yang tidak ada, pembatasan geografis, atau masalah teknis dengan video yang diberikan oleh YouTube API.</p>
                         <p className="text-center text-gray-500 text-sm mt-2">Coba topik lain atau periksa kembali koneksi internet Anda.</p>
                     </InfoCard>
                 )}
@@ -628,7 +655,7 @@ const Footer = () => (
         <p>Owner Bgune - Digital & YouTuber "Pernah Mikir?"</p>
         <div className="flex justify-center gap-4 mt-4">
             <a href="https://www.youtube.com/@PernahMikirChannel" target="_blank" rel="noopener noreferrer" className="hover:text-white"><Youtube/></a>
-            <a href="https://github.com/irhamp" target="_blank" rel="noopener noreferrer" className="hover:text-white"><Github/>/></a>
+            <a href="https://github.com/irhamp" target="_blank" rel="noopener noreferrer" className="hover:text-white"><Github/></a>
             <a href="https://www.instagram.com/irham_putra07" target="_blank" rel="noopener noreferrer" className="hover:text-white"><Instagram/></a>
         </div>
         <p className="mt-6">Dibuat dengan <Sparkles className="inline h-4 w-4 text-yellow-400"/> dan Teknologi AI</p>
@@ -646,17 +673,10 @@ styleSheet.innerText = `
 .prose-invert a { color: #60a5fa; }
 .aspect-w-16 { position: relative; padding-bottom: 56.25%; /* 9 / 16 = 0.5625 */ }
 .aspect-h-9 { height: 0; /* Untuk kombinasi aspect-w-16 dan padding-bottom */ }
-.aspect-w-16 > div { /* Target the div containing the iframe */
+.aspect-w-16 > iframe { /* Target the iframe itself */
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex; /* Untuk memastikan iframe mengisi ruang */
-    justify-content: center;
-    align-items: center;
-}
-.aspect-w-16 > div > iframe { /* Target the iframe itself */
     width: 100%;
     height: 100%;
     border: none; /* Hapus border default iframe */
