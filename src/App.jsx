@@ -100,51 +100,18 @@ const callGeminiAPI = async (prompt, isJson = true) => {
 };
 
 /**
- * Mengekstrak ID video YouTube dari berbagai format URL dan mengembalikan URL embed standar.
- * @param {string} embedCode Kode embed HTML lengkap atau URL video YouTube.
- * @returns {string|null} URL embed YouTube standar (misal: "https://www.youtube.com/embed/VIDEO_ID") atau null jika gagal.
+ * Membangun URL embed YouTube standar dari ID video.
+ * @param {string} videoId ID video YouTube (misal: "dQw4w9WgXcQ").
+ * @returns {string|null} URL embed YouTube standar atau null jika ID tidak valid.
  */
-const getYouTubeEmbedUrl = (embedCode) => {
-    if (!embedCode || typeof embedCode !== 'string') return null;
-
-    // 1. Coba ekstrak URL dari atribut 'src' jika ini adalah tag iframe penuh
-    const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
-    const url = srcMatch ? srcMatch[1] : embedCode; // Jika tidak ada src, asumsikan embedCode adalah URL itu sendiri
-
-    console.log(`[YouTube] URL mentah yang akan diproses: "${url}"`);
-
-    if (url) {
-        let videoId = null;
-
-        // 2. Coba ekstrak ID dari berbagai pola URL YouTube
-        // Pola standar: youtube.com/embed/, youtube.com/v/, youtu.be/
-        const standardEmbedMatch = url.match(/(?:youtube\.com\/(?:embed\/|v\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-        if (standardEmbedMatch) {
-            videoId = standardEmbedMatch[1];
-        } else {
-            // Pola untuk URL tontonan biasa dengan parameter 'v='
-            const paramVMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-            if (paramVMatch) {
-                videoId = paramVMatch[1];
-            } else {
-                // Pola fallback: jika ada angka 11 karakter yang terlihat seperti ID di URL
-                // Ini kurang akurat tapi bisa jadi penolong jika Gemini memberi URL yang sangat aneh
-                const genericIdMatch = url.match(/([a-zA-Z0-9_-]{11})/);
-                 if (genericIdMatch && !url.includes('googleusercontent.com')) { // Hindari mencocokkan ID dari domain googleusercontent
-                    videoId = genericIdMatch[1];
-                 }
-            }
-        }
-
-        if (videoId) {
-            // 3. Bangun URL embed YouTube yang standar dan pasti berfungsi
-            const finalEmbedUrl = `https://www.youtube.com/embed/${videoId}`;
-            console.log(`[YouTube] ID Video terdeteksi: ${videoId}, URL embed final: ${finalEmbedUrl}`);
-            return finalEmbedUrl;
-        }
+const getYouTubeEmbedUrlFromId = (videoId) => {
+    if (!videoId || typeof videoId !== 'string' || videoId.length !== 11) {
+        console.log("[YouTube] ID video tidak valid.");
+        return null;
     }
-    console.log("[YouTube] Tidak dapat mengekstrak ID video atau URL tidak valid dari input.");
-    return null;
+    const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+    console.log(`[YouTube] URL embed final: ${embedUrl}`);
+    return embedUrl;
 };
 
 
@@ -178,15 +145,15 @@ const AppProvider = ({ children }) => {
         const { level, track, subject } = contextValue;
         if (!isFromHistory) addHistory({ topic: searchTopic, level, track, subjectName: subject.name });
 
-        // Prompt diperbarui sesuai permintaan pengguna
+        // Prompt diperbarui untuk meminta ID video, bukan embed code lengkap
         const prompt = `
         Sebagai seorang ahli materi pelajaran, tolong proses permintaan berikut:
-        "Buatkan saya ringkasan dan materi lengkap tentang '${searchTopic}' untuk siswa ${level} ${track ? `jurusan ${track}`: ''} mata pelajaran '${subject.name}'. Beserta video YouTube pembelajaran yang relevan, pastikan kamu mengirimkannya dalam bentuk kode embed HTML iframe lengkap dengan ID unik di dalamnya. Kemudian, sertakan 5 soal latihan pilihan ganda (A, B, C, D, E) beserta jawaban dan penjelasan untuk setiap soal."
+        "Buatkan saya ringkasan dan materi lengkap tentang '${searchTopic}' untuk siswa ${level} ${track ? `jurusan ${track}`: ''} mata pelajaran '${subject.name}'. Beserta ID video YouTube pembelajaran yang relevan. Kemudian, sertakan 5 soal latihan pilihan ganda (A, B, C, D, E) beserta jawaban dan penjelasan untuk setiap soal."
 
         Tolong berikan respons HANYA dalam format JSON yang valid dan bersih dengan struktur berikut:
         {
           "judul_video": "Judul video YouTube yang relevan",
-          "kode_embed": "<iframe width='560' height='315' src='https://www.youtube.com/embed/VIDEO_ID_DISINI' title='YouTube video player' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' allowfullscreen id='youtube-embed-${new Date().getTime()}'></iframe>",
+          "youtube_video_id": "ID_VIDEO_YOUTUBE_DISINI",
           "ringkasan": "Ringkasan singkat dan padat mengenai topik '${searchTopic}'.",
           "materi_lengkap": "Penjelasan materi yang komprehensif dan terstruktur dengan baik dalam format Markdown. Gunakan heading, list, dan tebal untuk keterbacaan.",
           "latihan_soal": [
@@ -198,13 +165,13 @@ const AppProvider = ({ children }) => {
             }
           ]
         }
-        Pastikan kode embed YouTube valid dan materi lengkap ditulis dalam format Markdown.
+        Pastikan ID video YouTube valid dan materi lengkap ditulis dalam format Markdown.
         `;
 
         try {
             const data = await callGeminiAPI(prompt);
-            if (data.kode_embed) {
-                data.youtubeEmbedUrl = getYouTubeEmbedUrl(data.kode_embed);
+            if (data.youtube_video_id) {
+                data.youtubeEmbedUrl = getYouTubeEmbedUrlFromId(data.youtube_video_id);
             }
             setLearningData({ topic: searchTopic, ...data });
             console.log("[Fetch Materi] Sukses, data materi diatur.");
@@ -424,7 +391,7 @@ const SubjectDashboardScreen = () => {
             </div>
             <div className="max-w-4xl mx-auto"><div className="flex justify-center border-b border-gray-700 mb-6 flex-wrap">{['rekomendasi', 'riwayat', 'bank_soal', 'rencana'].map(tab => <TabButton key={tab} icon={{rekomendasi: <Sparkles/>, riwayat: <History/>, bank_soal: <BrainCircuit/>, rencana: <CalendarDays/>}[tab]} text={{rekomendasi: "Rekomendasi", riwayat: "Riwayat", bank_soal: "Bank Soal", rencana: "Rencana Belajar"}[tab]} isActive={activeTab===tab} onClick={() => setActiveTab(tab)}/>)}</div>
                 <div style={{animation: 'fadeInUp 0.5s ease-out forwards'}}>
-                    {activeTab === 'rekomendasi' && (recommendations.length > 0 ? <div className="grid md:grid-cols-2 gap-4">{recommendations.map((rec,i)=>(<ListItem key={i} text={rec} onClick={()=>fetchLearningMaterial(rec)}/>))}</div> : <p className="text-center text-gray-500">Tidak ada rekomendasi topik saat ini.</p>)}
+                    {activeTab === 'rekomendasi' && (recommendations.length > 0 ? <div className="grid md:grid-cols-2 gap-4">{recommendations.map((rec,i)=>(<ListItem key={i} text={rec} onClick={()=>fetchLearningMaterial(rec)}/>))}</div> : <p className="text-center text-gray-500">Tidak ada rekomendasi topik saat ini.</p></li>)}
                     {activeTab === 'riwayat' && (filteredHistory.length > 0 ? <div className="grid md:grid-cols-2 gap-4">{filteredHistory.map((h,i)=>(<ListItem key={i} text={h.topic} onClick={()=>fetchLearningMaterial(h.topic, true)}/>))}</div> : <p className="text-center text-gray-500">Anda belum memiliki riwayat belajar untuk mata pelajaran ini.</p>)}
                     {activeTab === 'bank_soal' && <BankSoalGenerator />}
                     {activeTab === 'rencana' && <StudyPlanGenerator />}
@@ -529,7 +496,8 @@ const LearningMaterialScreen = () => {
                     </InfoCard>
                 ) : (
                     <InfoCard icon={<Youtube />} title="Video Pembelajaran">
-                        <p className="text-center text-gray-400">Maaf, video pembelajaran tidak tersedia atau tidak dapat dimuat saat ini. Ini mungkin disebabkan oleh video yang tidak ada, pembatasan geografis, atau masalah teknis.</p>
+                        <p className="text-center text-gray-400">Maaf, video pembelajaran tidak tersedia atau tidak dapat dimuat saat ini. Ini mungkin disebabkan oleh video yang tidak ada, pembatasan geografis, atau masalah teknis dengan video yang diberikan oleh AI.</p>
+                        <p className="text-center text-gray-500 text-sm mt-2">Coba topik lain atau periksa kembali koneksi internet Anda.</p>
                     </InfoCard>
                 )}
                 {ringkasan && <InfoCard icon={<Lightbulb />} title="Ringkasan"><p className="text-gray-300 leading-relaxed">{ringkasan}</p></InfoCard>}
