@@ -100,48 +100,27 @@ const callGeminiAPI = async (prompt, isJson = true) => {
 };
 
 /**
- * Mengekstrak ID video YouTube dari berbagai format URL (termasuk dari kode embed HTML)
- * dan mengembalikan URL tontonan standar YouTube.
- * @param {string} input String yang bisa berupa URL video, ID video, atau kode embed HTML lengkap.
+ * Mengekstrak URL tontonan YouTube standar dari kode embed HTML.
+ * Ini akan digunakan untuk tombol "Tonton di YouTube" sebagai fallback.
+ * @param {string} embedCode Kode embed HTML lengkap dari Gemini.
  * @returns {string|null} URL tontonan YouTube standar (misal: "https://www.youtube.com/watch?v=VIDEO_ID") atau null jika gagal.
  */
 const getYouTubeWatchUrlFromEmbedCode = (embedCode) => {
     if (!embedCode || typeof embedCode !== 'string') return null;
 
     let videoId = null;
-
-    // 1. Coba ekstrak URL dari atribut 'src' jika ini adalah tag iframe penuh
     const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
-    const url = srcMatch ? srcMatch[1] : embedCode; // Jika tidak ada src, asumsikan embedCode adalah URL itu sendiri
+    const url = srcMatch ? srcMatch[1] : embedCode;
 
-    console.log(`[YouTube Parser] URL mentah dari embed: "${url}"`);
-
-    // 2. Coba ekstrak ID dari berbagai pola URL YouTube
-    // Pola standar: youtube.com/embed/, youtube.com/v/, youtu.be/, youtube-nocookie.com/embed/
-    const standardEmbedMatch = url.match(/(?:youtube\.com\/(?:embed\/|v\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-    if (standardEmbedMatch) {
-        videoId = standardEmbedMatch[1];
-    } else {
-        // Pola untuk URL tontonan biasa dengan parameter 'v='
-        const paramVMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-        if (paramVMatch) {
-            videoId = paramVMatch[1];
-        } else {
-            // Jika tidak cocok dengan pola URL, coba asumsikan input adalah ID video langsung
-            // ID YouTube selalu 11 karakter alfanumerik.
-            if (url.length === 11 && /^[a-zA-Z0-9_-]{11}$/.test(url)) {
-                videoId = url;
-            }
-        }
+    // Coba ekstrak ID dari berbagai pola URL YouTube
+    const idMatch = url.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (idMatch) {
+        videoId = idMatch[1];
     }
 
     if (videoId) {
-        const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-        console.log(`[YouTube Parser] ID Video terdeteksi: ${videoId}, URL tontonan final: ${watchUrl}`);
-        return watchUrl;
+        return `https://www.youtube.com/watch?v=${videoId}`;
     }
-
-    console.log("[YouTube Parser] Tidak dapat mengekstrak ID video atau URL tidak valid dari input untuk URL tontonan.");
     return null;
 };
 
@@ -525,7 +504,13 @@ const LearningMaterialScreen = () => {
                     <InfoCard icon={<Youtube />} title={judul_video}>
                         <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden shadow-lg">
                             {/* Render iframe langsung menggunakan dangerouslySetInnerHTML */}
-                            <div key={kode_embed} dangerouslySetInnerHTML={{ __html: kode_embed }} />
+                            {/* Tambahkan key unik berdasarkan kode_embed untuk memaksa React me-remount iframe */}
+                            <div
+                                key={kode_embed}
+                                dangerouslySetInnerHTML={{ __html: kode_embed }}
+                                // Pastikan iframe responsif
+                                style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}
+                            />
                         </div>
                         {/* Tombol fallback jika video tidak bisa di-embed */}
                         <div className="text-center mt-4">
@@ -643,7 +628,7 @@ const Footer = () => (
         <p>Owner Bgune - Digital & YouTuber "Pernah Mikir?"</p>
         <div className="flex justify-center gap-4 mt-4">
             <a href="https://www.youtube.com/@PernahMikirChannel" target="_blank" rel="noopener noreferrer" className="hover:text-white"><Youtube/></a>
-            <a href="https://github.com/irhamp" target="_blank" rel="noopener noreferrer" className="hover:text-white"><Github/></a>
+            <a href="https://github.com/irhamp" target="_blank" rel="noopener noreferrer" className="hover:text-white"><Github/>/></a>
             <a href="https://www.instagram.com/irham_putra07" target="_blank" rel="noopener noreferrer" className="hover:text-white"><Instagram/></a>
         </div>
         <p className="mt-6">Dibuat dengan <Sparkles className="inline h-4 w-4 text-yellow-400"/> dan Teknologi AI</p>
@@ -659,8 +644,22 @@ styleSheet.innerText = `
 .bg-grid-pattern { background-image: linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px); background-size: 2rem 2rem; }
 .prose-invert h1, .prose-invert h2, .prose-invert h3, .prose-invert h4, .prose-invert strong { color: #f3f4f6; }
 .prose-invert a { color: #60a5fa; }
-.aspect-w-16 { position: relative; padding-bottom: 56.25%; }
-.aspect-h-9 { height: 0; }
-.aspect-w-16 > iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+.aspect-w-16 { position: relative; padding-bottom: 56.25%; /* 9 / 16 = 0.5625 */ }
+.aspect-h-9 { height: 0; /* Untuk kombinasi aspect-w-16 dan padding-bottom */ }
+.aspect-w-16 > div { /* Target the div containing the iframe */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex; /* Untuk memastikan iframe mengisi ruang */
+    justify-content: center;
+    align-items: center;
+}
+.aspect-w-16 > div > iframe { /* Target the iframe itself */
+    width: 100%;
+    height: 100%;
+    border: none; /* Hapus border default iframe */
+}
 `;
 document.head.appendChild(styleSheet);
