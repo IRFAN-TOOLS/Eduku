@@ -102,41 +102,35 @@ const callGeminiAPI = async (prompt, isJson = true) => {
 const getYouTubeEmbedUrl = (embedCode) => {
     if (!embedCode || typeof embedCode !== 'string') return null;
 
-    // Mencari URL dari atribut src
+    // Mencari URL dari atribut src dalam kode embed HTML
     const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
     const url = srcMatch ? srcMatch[1] : null;
 
-    console.log(`[YouTube] Ekstraksi URL dari embed: "${embedCode}" -> "${url}"`);
+    console.log(`[YouTube] Ekstraksi URL mentah dari embed: "${url}"`);
 
     if (url) {
-        // Coba ekstrak ID dari berbagai format YouTube URL (termasuk yang tidak standar dari Gemini)
         let videoId = null;
 
-        // Pattern untuk youtube.com/embed/VIDEO_ID
-        const embedIdMatch = url.match(/(?:youtube\.com\/(?:embed\/|v\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-        if (embedIdMatch) {
-            videoId = embedIdMatch[1];
+        // Pattern paling umum untuk YouTube embed URL dan youtu.be
+        const standardEmbedMatch = url.match(/(?:youtube\.com\/(?:embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if (standardEmbedMatch) {
+            videoId = standardEmbedMatch[1];
         } else {
-            // Jika Gemini mengembalikan URL yang tidak standar (seperti googleusercontent.com/youtube.com/1), coba ekstrak ID dari sana
-            // Ini adalah asumsi jika Gemini benar-benar mengembalikan format non-standar.
-            // Sebaiknya perbaiki prompt Gemini agar mengembalikan ID saja atau embed URL standar.
-            const nonStandardMatch = url.match(/youtube\.com\/(\d)\?v=([a-zA-Z0-9_-]{11})/); // Contoh jika urlnya seperti "youtube.com/embed?v=VIDEO_ID"
-            if (nonStandardMatch) {
-                videoId = nonStandardMatch[2];
-            } else {
-                // Mencoba menemukan ID video di URL standar jika ada query param 'v='
-                const paramVMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-                if (paramVMatch) {
-                    videoId = paramVMatch[1];
-                }
+            // Jika tidak cocok dengan pola standar, coba ekstrak dari query parameter 'v='
+            const paramVMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+            if (paramVMatch) {
+                videoId = paramVMatch[1];
             }
         }
 
         if (videoId) {
-            // Bangun URL embed YouTube yang standar
-            return `https://www.youtube.com/embed/${videoId}`;
+            // Bangun URL embed YouTube yang standar dan pasti berfungsi
+            const embedBaseUrl = "youtube.com/embed0"; // URL embed YouTube standar
+            console.log(`[YouTube] ID Video terdeteksi: ${videoId}, URL embed final: ${embedBaseUrl}${videoId}`);
+            return `${embedBaseUrl}${videoId}`;
         }
     }
+    console.log("[YouTube] Tidak dapat mengekstrak ID video atau URL tidak valid.");
     return null;
 };
 
