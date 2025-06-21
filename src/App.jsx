@@ -99,38 +99,51 @@ const callGeminiAPI = async (prompt, isJson = true) => {
     }
 };
 
+/**
+ * Mengekstrak ID video YouTube dari berbagai format URL dan mengembalikan URL embed standar.
+ * @param {string} embedCode Kode embed HTML lengkap atau URL video YouTube.
+ * @returns {string|null} URL embed YouTube standar (misal: "https://www.youtube.com/embed/VIDEO_ID") atau null jika gagal.
+ */
 const getYouTubeEmbedUrl = (embedCode) => {
     if (!embedCode || typeof embedCode !== 'string') return null;
 
-    // Mencari URL dari atribut src dalam kode embed HTML
+    // 1. Coba ekstrak URL dari atribut 'src' jika ini adalah tag iframe penuh
     const srcMatch = embedCode.match(/src=["']([^"']+)["']/);
-    const url = srcMatch ? srcMatch[1] : null;
+    const url = srcMatch ? srcMatch[1] : embedCode; // Jika tidak ada src, asumsikan embedCode adalah URL itu sendiri
 
-    console.log(`[YouTube] Ekstraksi URL mentah dari embed: "${url}"`);
+    console.log(`[YouTube] URL mentah yang akan diproses: "${url}"`);
 
     if (url) {
         let videoId = null;
 
-        // Pattern paling umum untuk YouTube embed URL dan youtu.be
-        const standardEmbedMatch = url.match(/(?:youtube\.com\/(?:embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        // 2. Coba ekstrak ID dari berbagai pola URL YouTube
+        // Pola standar: youtube.com/embed/, youtube.com/v/, youtu.be/
+        const standardEmbedMatch = url.match(/(?:youtube\.com\/(?:embed\/|v\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
         if (standardEmbedMatch) {
             videoId = standardEmbedMatch[1];
         } else {
-            // Jika tidak cocok dengan pola standar, coba ekstrak dari query parameter 'v='
+            // Pola untuk URL tontonan biasa dengan parameter 'v='
             const paramVMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
             if (paramVMatch) {
                 videoId = paramVMatch[1];
+            } else {
+                // Pola fallback: jika ada angka 11 karakter yang terlihat seperti ID di URL
+                // Ini kurang akurat tapi bisa jadi penolong jika Gemini memberi URL yang sangat aneh
+                const genericIdMatch = url.match(/([a-zA-Z0-9_-]{11})/);
+                 if (genericIdMatch && !url.includes('googleusercontent.com')) { // Hindari mencocokkan ID dari domain googleusercontent
+                    videoId = genericIdMatch[1];
+                 }
             }
         }
 
         if (videoId) {
-            // Bangun URL embed YouTube yang standar dan pasti berfungsi
-            const embedBaseUrl = "youtube.com/embed0"; // URL embed YouTube standar
-            console.log(`[YouTube] ID Video terdeteksi: ${videoId}, URL embed final: ${embedBaseUrl}${videoId}`);
-            return `${embedBaseUrl}${videoId}`;
+            // 3. Bangun URL embed YouTube yang standar dan pasti berfungsi
+            const finalEmbedUrl = `https://www.youtube.com/embed/${videoId}`;
+            console.log(`[YouTube] ID Video terdeteksi: ${videoId}, URL embed final: ${finalEmbedUrl}`);
+            return finalEmbedUrl;
         }
     }
-    console.log("[YouTube] Tidak dapat mengekstrak ID video atau URL tidak valid.");
+    console.log("[YouTube] Tidak dapat mengekstrak ID video atau URL tidak valid dari input.");
     return null;
 };
 
@@ -501,7 +514,24 @@ const LearningMaterialScreen = () => {
             <BackButton onClick={() => setScreen('subjectDashboard')} />
             <div className="space-y-8 pt-16">
                 <h1 className="text-3xl sm:text-5xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text">{topic}</h1>
-                {judul_video && youtubeEmbedUrl && <InfoCard icon={<Youtube />} title={judul_video}><div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden shadow-lg"><iframe className="w-full h-full" src={youtubeEmbedUrl} title={judul_video} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe></div></InfoCard>}
+                {judul_video && youtubeEmbedUrl ? (
+                    <InfoCard icon={<Youtube />} title={judul_video}>
+                        <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden shadow-lg">
+                            <iframe
+                                className="w-full h-full"
+                                src={youtubeEmbedUrl}
+                                title={judul_video}
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            ></iframe>
+                        </div>
+                    </InfoCard>
+                ) : (
+                    <InfoCard icon={<Youtube />} title="Video Pembelajaran">
+                        <p className="text-center text-gray-400">Maaf, video pembelajaran tidak tersedia atau tidak dapat dimuat saat ini. Ini mungkin disebabkan oleh video yang tidak ada, pembatasan geografis, atau masalah teknis.</p>
+                    </InfoCard>
+                )}
                 {ringkasan && <InfoCard icon={<Lightbulb />} title="Ringkasan"><p className="text-gray-300 leading-relaxed">{ringkasan}</p></InfoCard>}
                 {materi_lengkap && <InfoCard icon={<BookOpen />} title="Materi Lengkap"><div className="prose prose-invert max-w-none prose-p:text-gray-300 prose-li:text-gray-300 prose-headings:text-gray-100"><ReactMarkdown>{materi_lengkap}</ReactMarkdown></div></InfoCard>}
                 {latihan_soal?.length > 0 && <InfoCard icon={<BookMarked />} title="Latihan Soal"><QuizPlayer questions={latihan_soal} /></InfoCard>}
