@@ -172,48 +172,49 @@ const AppProvider = ({ children }) => {
         const { level, track, subject } = contextValue;
         if (!isFromHistory) addHistory({ topic: searchTopic, level, track, subjectName: subject.name });
 
-        // Prompt Gemini HANYA untuk materi teks (ringkasan, materi lengkap, soal)
-        const geminiPrompt = `
-        Sebagai seorang ahli materi pelajaran, tolong proses permintaan berikut:
-        "Buatkan saya ringkasan dan materi lengkap tentang '${searchTopic}' untuk siswa ${level} ${track ? `jurusan ${track}`: ''} mata pelajaran '${subject.name}'.
+    // Prompt Gemini HANYA untuk materi teks (ringkasan, materi lengkap, soal)
+    const geminiPrompt = `
+    Sebagai seorang ahli materi pelajaran, tolong proses permintaan berikut:
+    "Buatkan saya ringkasan dan materi lengkap tentang '${searchTopic}' untuk siswa ${level} ${track ? `jurusan ${track}`: ''} mata pelajaran '${subject.name}'.
 
-        Pastikan 'materi_lengkap' ditulis dalam format Markdown standar yang **SANGAT BERSIH dan TERSTRUKTUR DENGAN BENAR**.
-        Penting:
-        - Gunakan baris kosong (tekan Enter dua kali) untuk memisahkan paragraf, heading, dan item daftar agar ada spasi yang jelas.
-        - Gunakan `#` untuk heading (misal: `# Judul Utama`, `## Sub Judul`).
-        - Gunakan `*` atau `-` untuk item daftar (misal: `- Item 1`, `* Item 2`).
-        - Gunakan `**teks**` untuk tebal dan `*teks*` untuk miring.
-        - **JANGAN** gunakan karakter escape (\) di depan simbol Markdown (seperti \*, \#) jika tidak benar-benar diperlukan.
-        - Contoh format yang diinginkan:
-          \`\`\`
-          # Judul Materi
+    Pastikan 'materi_lengkap' ditulis dalam format Markdown standar yang **SANGAT BERSIH dan TERSTRUKTUR DENGAN BENAR**.
+    Penting:
+    - Gunakan baris kosong (tekan Enter dua kali) untuk memisahkan paragraf, heading, dan item daftar agar ada spasi yang jelas.
+    - Gunakan '#' untuk heading (misal: '# Judul Utama', '## Sub Judul').
+    - Gunakan '*' atau '-' untuk item daftar (misal: '- Item 1', '* Item 2').
+    - Gunakan '**teks**' untuk tebal dan '*teks*' untuk miring.
+    - **JANGAN** gunakan karakter escape (\) di depan simbol Markdown (seperti \*, \#) jika tidak benar-benar diperlukan.
+    - Contoh format yang diinginkan:
+      \`\`\`  // <--- PERHATIKAN INI SUDAH DI-ESCAPE: \`\`\`
+      # Judul Materi
 
-          Ini adalah paragraf pengantar.
+      Ini adalah paragraf pengantar.
 
-          ## Konsep Penting
+      ## Konsep Penting
 
-          - Konsep A
-          - Konsep B
+      - Konsep A
+      - Konsep B
 
-          Ini paragraf lain setelah daftar.
-          \`\`\`
+      Ini paragraf lain setelah daftar.
+      \`\`\`  // <--- PERHATIKAN INI SUDAH DI-ESCAPE: \`\`\`
 
-        Sertakan 5 soal latihan pilihan ganda (A, B, C, D, E) beserta jawaban dan penjelasan untuk setiap soal."
+    Sertakan 5 soal latihan pilihan ganda (A, B, C, D, E) beserta jawaban dan penjelasan untuk setiap soal."
 
-        Tolong berikan respons HANYA dalam format JSON yang valid dan bersih dengan struktur berikut:
+    Tolong berikan respons HANYA dalam format JSON yang valid dan bersih dengan struktur berikut:
+    {
+      "ringkasan": "Ringkasan singkat dan padat mengenai topik '${searchTopic}'.",
+      "materi_lengkap": "Penjelasan materi yang komprehensif dan terstruktur dengan baik dalam format Markdown.",
+      "latihan_soal": [
         {
-          "ringkasan": "Ringkasan singkat dan padat mengenai topik '${searchTopic}'.",
-          "materi_lengkap": "Penjelasan materi yang komprehensif dan terstruktur dengan baik dalam format Markdown.",
-          "latihan_soal": [
-            {
-              "question": "Pertanyaan pertama terkait materi.",
-              "options": ["A. Opsi A", "B. Opsi B", "C. Opsi C", "D. Opsi D", "E. Opsi E"],
-              "correctAnswer": "A",
-              "explanation": "Penjelasan mengapa jawaban A adalah yang benar."
-            }
-          ]
+          "question": "Pertanyaan pertama terkait materi.",
+          "options": ["A. Opsi A", "B. Opsi B", "C. Opsi C", "D. Opsi D", "E. Opsi E"],
+          "correctAnswer": "A",
+          "explanation": "Penjelasan mengapa jawaban A adalah yang benar."
         }
-        `;
+      ]
+    }
+    `;
+
 
         try {
             // Fetch text content from Gemini
