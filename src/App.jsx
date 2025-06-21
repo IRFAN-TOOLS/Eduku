@@ -17,7 +17,7 @@ const motionVariants = {
 // --- KONFIGURASI PENTING ---
 // Catatan: Sebaiknya simpan API Key di environment variable untuk keamanan.
 // Biarkan kosong jika tidak memiliki kunci API sendiri, sistem akan menggunakan proxy.
-const GEMINI_API_KEY = "";
+const GEMINI_API_KEY = "AIzaSyArJ1P8HanSQ_XVWX9m4kUlsIVXrBRInik";
 
 // --- App Context ---
 const AppContext = createContext(null);
