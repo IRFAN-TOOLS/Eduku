@@ -1,13 +1,614 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#000000" />
-    <title>Eduku</title>
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velthron Community - Gaming & Minecraft SMP</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        /* Custom Styles for Modern Fantasy Neon Theme */
+        :root {
+            --bg-color: #0D0D1A;
+            --primary-text: #E0E0E0;
+            --glow-blue: #00BFFF;
+            --glow-green: #39FF14;
+            --card-bg: rgba(18, 24, 49, 0.6);
+            --border-color: rgba(0, 191, 255, 0.3);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--primary-text);
+            font-family: 'Rajdhani', sans-serif;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(0, 191, 255, 0.1), transparent 30%),
+                radial-gradient(circle at 85% 30%, rgba(57, 255, 20, 0.1), transparent 30%),
+                radial-gradient(circle at 50% 90%, rgba(0, 191, 255, 0.05), transparent 40%);
+            background-attachment: fixed;
+        }
+
+        /* Font styles */
+        h1, h2, h3 {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Neon Glow Effects */
+        .neon-glow-blue {
+            text-shadow: 0 0 5px rgba(0, 191, 255, 0.7), 0 0 10px rgba(0, 191, 255, 0.5), 0 0 15px rgba(0, 191, 255, 0.3);
+        }
+        .neon-glow-green {
+            text-shadow: 0 0 5px rgba(57, 255, 20, 0.7), 0 0 10px rgba(57, 255, 20, 0.5), 0 0 15px rgba(57, 255, 20, 0.3);
+        }
+        .neon-border {
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 10px rgba(0, 191, 255, 0.2), inset 0 0 5px rgba(0, 191, 255, 0.1);
+        }
+        .neon-button {
+            transition: all 0.3s ease;
+            box-shadow: 0 0 8px var(--glow-blue), inset 0 0 8px rgba(0, 191, 255, 0.5);
+        }
+        .neon-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px var(--glow-blue), 0 0 25px var(--glow-blue), inset 0 0 10px rgba(0, 191, 255, 0.7);
+        }
+        .nav-link:hover {
+            color: var(--glow-blue);
+            text-shadow: 0 0 8px var(--glow-blue);
+        }
+
+        /* Custom Card Styles */
+        .card {
+            background-color: var(--card-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--glow-blue);
+            box-shadow: 0 0 20px rgba(0, 191, 255, 0.3);
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--glow-blue);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00a1d9;
+        }
+
+        /* Animation */
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .fade-in-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Lightbox for Gallery */
+        .lightbox {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+        }
+        .lightbox img {
+            max-width: 90%;
+            max-height: 80%;
+            border: 3px solid var(--glow-blue);
+            border-radius: 8px;
+            box-shadow: 0 0 25px var(--glow-blue);
+        }
+        .lightbox .close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .lightbox-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            font-size: 3rem;
+            cursor: pointer;
+            user-select: none;
+            padding: 1rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+        .lightbox-nav:hover {
+            background: rgba(0,191,255,0.5);
+        }
+        .prev { left: 1rem; }
+        .next { right: 1rem; }
+
+        /* Carousel */
+        .carousel-container {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+        }
+        .carousel-track {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+        }
+        .carousel-slide {
+            min-width: 100%;
+            box-sizing: border-box;
+            padding: 0 10px; /* spacing between slides */
+        }
+        @media (min-width: 768px) {
+            .carousel-slide {
+                min-width: 50%;
+            }
+        }
+        @media (min-width: 1024px) {
+            .carousel-slide {
+                min-width: 33.333%;
+            }
+        }
+
+    </style>
+</head>
+<body class="overflow-x-hidden">
+
+    <!-- Header & Navigation -->
+    <header id="header" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="#home" class="flex items-center space-x-2">
+                <img src="https://lh3.googleusercontent.com/u/0/d/13niijn9T2It0U5oWJfKdIO4SAmuO5iGe" alt="Velthron Logo" class="h-12 w-12" onerror="this.onerror=null;this.src='https://placehold.co/48x48/0d0d1a/ffffff?text=V';">
+                <span class="text-2xl font-bold text-white neon-glow-blue">VELTHRON</span>
+            </a>
+            <div class="hidden lg:flex items-center space-x-8">
+                <a href="#home" class="nav-link text-lg font-semibold tracking-wider">Home</a>
+                <a href="#about" class="nav-link text-lg font-semibold tracking-wider">Tentang Kami</a>
+                <a href="#servers" class="nav-link text-lg font-semibold tracking-wider">Server</a>
+                <a href="#gallery" class="nav-link text-lg font-semibold tracking-wider">Galeri</a>
+                <a href="#team" class="nav-link text-lg font-semibold tracking-wider">Tim</a>
+                <a href="#donate" class="nav-link text-lg font-semibold tracking-wider">Donasi</a>
+                <a href="#contact" class="nav-link text-lg font-semibold tracking-wider">Kontak</a>
+            </div>
+            <button id="mobile-menu-button" class="lg:hidden text-white focus:outline-none">
+                <i class="fas fa-bars fa-2x"></i>
+            </button>
+        </nav>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden lg:hidden bg-black bg-opacity-90">
+            <a href="#home" class="block text-center py-4 text-lg font-semibold tracking-wider nav-link">Home</a>
+            <a href="#about" class="block text-center py-4 text-lg font-semibold tracking-wider nav-link">Tentang Kami</a>
+            <a href="#servers" class="block text-center py-4 text-lg font-semibold tracking-wider nav-link">Server</a>
+            <a href="#gallery" class="block text-center py-4 text-lg font-semibold tracking-wider nav-link">Galeri</a>
+            <a href="#team" class="block text-center py-4 text-lg font-semibold tracking-wider nav-link">Tim</a>
+            <a href="#donate" class="block text-center py-4 text-lg font-semibold tracking-wider nav-link">Donasi</a>
+            <a href="#contact" class="block text-center py-4 text-lg font-semibold tracking-wider nav-link">Kontak</a>
+        </div>
+    </header>
+
+    <main>
+        <!-- Home Section -->
+        <section id="home" class="h-screen flex items-center justify-center text-center relative overflow-hidden">
+            <div class="absolute inset-0 bg-black opacity-50"></div>
+            <video autoplay loop muted playsinline class="absolute z-0 w-auto min-w-full min-h-full max-w-none">
+                <source src="https://assets.mixkit.co/videos/preview/mixkit-futuristic-scrolling-tunnel-of-light-23327-large.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <div class="relative z-10 p-4">
+                <h1 class="text-5xl md:text-7xl lg:text-8xl font-bold text-white mb-4 neon-glow-blue">VELTHRON COMMUNITY</h1>
+                <p class="text-xl md:text-2xl text-gray-300 mb-8">Gerbang menuju petualangan Minecraft tanpa batas.</p>
+                <a href="#servers" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg text-lg neon-button">
+                    Mulai Petualangan <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="py-20 container mx-auto px-6">
+            <div class="text-center mb-12 fade-in-up">
+                <h2 class="text-4xl font-bold neon-glow-green">TENTANG KAMI</h2>
+                <p class="text-lg mt-2 text-gray-400">Visi, Misi, dan Latar Belakang Komunitas</p>
+            </div>
+            <div class="max-w-4xl mx-auto text-center text-lg leading-relaxed text-gray-300 fade-in-up">
+                <p>VELTRHON COMMUNITY adalah sebuah komunitas gaming yang berdedikasi untuk menciptakan pengalaman bermain Minecraft yang imersif dan tak terlupakan. Kami mengelola beberapa server SMP dengan tema dan fitur unik, membangun ruang bagi para pemain untuk berkreasi, bersosialisasi, dan bertualang bersama. Tujuan kami adalah menghadirkan citra profesional, menjaga transparansi, serta memperkuat ikatan antar anggota melalui platform yang informatif dan interaktif ini.</p>
+            </div>
+        </section>
+
+        <!-- Servers Section -->
+        <section id="servers" class="py-20 bg-black bg-opacity-20">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16 fade-in-up">
+                    <h2 class="text-4xl font-bold neon-glow-blue">PILIH SERVERMU</h2>
+                    <p class="text-lg mt-2 text-gray-400">Setiap server menawarkan petualangan yang unik.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Server Card 1: LABS SMP -->
+                    <div class="card p-6 rounded-lg text-center flex flex-col fade-in-up">
+                        <img src="https://lh3.googleusercontent.com/u/0/d/1cXL1jox7lO5iFnrJ3lnQ9r6kMni0zObd" alt="LABS SMP Logo" class="h-24 w-24 mx-auto mb-4" onerror="this.onerror=null;this.src='https://placehold.co/96x96/0d0d1a/39ff14?text=LABS';">
+                        <h3 class="text-2xl font-bold mb-2 neon-glow-green">LABS SMP</h3>
+                        <p class="text-gray-400 mb-4 flex-grow">Server roleplay bertema survival dengan sistem season. Season 1: "Brutal Legend".</p>
+                        <div class="flex items-center justify-center space-x-2 mb-6">
+                            <span class="server-status h-3 w-3 rounded-full bg-yellow-400 animate-pulse" data-ip="brutal.labs.smp"></span>
+                            <span class="status-text text-yellow-400">Checking...</span>
+                        </div>
+                        <div class="space-y-3">
+                            <button class="w-full bg-gray-600 text-white font-semibold py-2 rounded-md transition duration-300 opacity-50 cursor-not-allowed">
+                                <i class="fas fa-copy mr-2"></i> IP Coming Soon
+                            </button>
+                            <a href="#donate" class="block w-full bg-green-500 text-white font-semibold py-2 rounded-md hover:bg-green-600 transition duration-300">
+                                <i class="fas fa-heart mr-2"></i> Donasi
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Server Card 2: CRONICAL SMP -->
+                    <div class="card p-6 rounded-lg text-center flex flex-col fade-in-up" style="animation-delay: 0.2s;">
+                        <img src="https://lh3.googleusercontent.com/u/0/d/1A1CqBADFeRl_6p9aTG3xmlkk-E3wkdRf" alt="CRONICAL SMP Logo" class="h-24 w-24 mx-auto mb-4" onerror="this.onerror=null;this.src='https://placehold.co/96x96/0d0d1a/00bfff?text=CRON';">
+                        <h3 class="text-2xl font-bold mb-2 neon-glow-blue">CRONICAL SMP</h3>
+                        <p class="text-gray-400 mb-4 flex-grow">Server survival dengan fitur warp dan teleport antar server untuk kemudahan eksplorasi.</p>
+                         <div class="flex items-center justify-center space-x-2 mb-6">
+                            <span class="server-status h-3 w-3 rounded-full bg-yellow-400 animate-pulse" data-ip="survival.cronical.smp"></span>
+                            <span class="status-text text-yellow-400">Checking...</span>
+                        </div>
+                        <div class="space-y-3">
+                             <button class="w-full bg-gray-600 text-white font-semibold py-2 rounded-md transition duration-300 opacity-50 cursor-not-allowed">
+                                <i class="fas fa-copy mr-2"></i> IP Coming Soon
+                            </button>
+                            <a href="#donate" class="block w-full bg-green-500 text-white font-semibold py-2 rounded-md hover:bg-green-600 transition duration-300">
+                                <i class="fas fa-heart mr-2"></i> Donasi
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Server Card 3: KYZAN SMP -->
+                    <div class="card p-6 rounded-lg text-center flex flex-col fade-in-up" style="animation-delay: 0.4s;">
+                        <img src="https://lh3.googleusercontent.com/u/0/d/1qldqSD-BdCTIuZX4_TF1g4u2Dn0Tq9Cn" alt="KYZAN SMP Logo" class="h-24 w-24 mx-auto mb-4" onerror="this.onerror=null;this.src='https://placehold.co/96x96/0d0d1a/ffffff?text=KYZAN';">
+                        <h3 class="text-2xl font-bold mb-2 text-white">KYZAN SMP</h3>
+                        <p class="text-gray-400 mb-4 flex-grow">Server survival dengan sistem ekonomi terintegrasi dan grup komunitas khusus.</p>
+                        <div class="flex items-center justify-center space-x-2 mb-6">
+                            <span class="server-status h-3 w-3 rounded-full bg-yellow-400 animate-pulse" data-ip="admin.sellinghost.my.id:19177"></span>
+                            <span class="status-text text-yellow-400">Checking...</span>
+                        </div>
+                        <div class="space-y-3">
+                            <button onclick="copyIp('admin.sellinghost.my.id:19177', this)" class="w-full bg-blue-500 text-white font-semibold py-2 rounded-md hover:bg-blue-600 transition duration-300">
+                                <i class="fas fa-copy mr-2"></i> Copy IP
+                            </button>
+                            <a href="#donate" class="block w-full bg-green-500 text-white font-semibold py-2 rounded-md hover:bg-green-600 transition duration-300">
+                                <i class="fas fa-heart mr-2"></i> Donasi
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Gallery Section -->
+        <section id="gallery" class="py-20">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16 fade-in-up">
+                    <h2 class="text-4xl font-bold neon-glow-green">GALERI KOMUNITAS</h2>
+                    <p class="text-lg mt-2 text-gray-400">Momen-momen tak terlupakan dari dunia Velthron.</p>
+                </div>
+                <div class="relative fade-in-up">
+                    <div class="carousel-container">
+                        <div class="carousel-track">
+                            <!-- Placeholder images. Replace with actual screenshots -->
+                            <div class="carousel-slide"><img src="https://placehold.co/600x400/0f172a/00bfff?text=Minecraft+Castle" class="rounded-lg cursor-pointer gallery-item" alt="Gallery Image 1"></div>
+                            <div class="carousel-slide"><img src="https://placehold.co/600x400/0f172a/39ff14?text=Epic+Landscape" class="rounded-lg cursor-pointer gallery-item" alt="Gallery Image 2"></div>
+                            <div class="carousel-slide"><img src="https://placehold.co/600x400/0f172a/ffffff?text=Community+Build" class="rounded-lg cursor-pointer gallery-item" alt="Gallery Image 3"></div>
+                            <div class="carousel-slide"><img src="https://placehold.co/600x400/0f172a/00bfff?text=Nether+Portal" class="rounded-lg cursor-pointer gallery-item" alt="Gallery Image 4"></div>
+                            <div class="carousel-slide"><img src="https://placehold.co/600x400/0f172a/39ff14?text=Survival+Base" class="rounded-lg cursor-pointer gallery-item" alt="Gallery Image 5"></div>
+                             <div class="carousel-slide"><img src="https://placehold.co/600x400/0f172a/ffffff?text=Roleplay+Event" class="rounded-lg cursor-pointer gallery-item" alt="Gallery Image 6"></div>
+                        </div>
+                    </div>
+                    <button id="prevBtn" class="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-4 bg-gray-800 bg-opacity-50 p-3 rounded-full text-white hover:bg-opacity-75 z-10"><i class="fas fa-chevron-left"></i></button>
+                    <button id="nextBtn" class="absolute top-1/2 right-0 transform -translate-y-1/2 translate-x-4 bg-gray-800 bg-opacity-50 p-3 rounded-full text-white hover:bg-opacity-75 z-10"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Lightbox Structure -->
+        <div id="lightbox" class="lightbox">
+            <span class="close">&times;</span>
+            <img class="lightbox-content" id="lightbox-img">
+            <div class="lightbox-nav prev" id="lightbox-prev">&#10094;</div>
+            <div class="lightbox-nav next" id="lightbox-next">&#10095;</div>
+        </div>
+
+        <!-- Team Section -->
+        <section id="team" class="py-20 bg-black bg-opacity-20">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16 fade-in-up">
+                    <h2 class="text-4xl font-bold neon-glow-blue">TIM PENGEMBANG</h2>
+                    <p class="text-lg mt-2 text-gray-400">Orang-orang di balik layar Velthron.</p>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 text-center">
+                    <!-- Team Member -->
+                    <div class="fade-in-up" style="animation-delay: 0s;">
+                        <img src="https://placehold.co/150x150/0d0d1a/ffffff?text=G" alt="Ghaisan" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-blue-400">
+                        <h4 class="text-xl font-bold">Ghaisan</h4>
+                        <p class="text-blue-300">Admin Server</p>
+                    </div>
+                    <div class="fade-in-up" style="animation-delay: 0.1s;">
+                        <img src="https://placehold.co/150x150/0d0d1a/ffffff?text=V" alt="Vennn" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-blue-400">
+                        <h4 class="text-xl font-bold">Vennn</h4>
+                        <p class="text-blue-300">Web Developer</p>
+                    </div>
+                    <div class="fade-in-up" style="animation-delay: 0.2s;">
+                        <img src="https://placehold.co/150x150/0d0d1a/ffffff?text=W" alt="Wahyu" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-blue-400">
+                        <h4 class="text-xl font-bold">Wahyu</h4>
+                        <p class="text-blue-300">Community Manager</p>
+                    </div>
+                    <div class="fade-in-up" style="animation-delay: 0.3s;">
+                        <img src="https://placehold.co/150x150/0d0d1a/ffffff?text=G" alt="Gabriel" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-blue-400">
+                        <h4 class="text-xl font-bold">Gabriel</h4>
+                        <p class="text-blue-300">Lead Builder</p>
+                    </div>
+                    <div class="fade-in-up" style="animation-delay: 0.4s;">
+                        <img src="https://placehold.co/150x150/0d0d1a/ffffff?text=G" alt="Genoz" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-blue-400">
+                        <h4 class="text-xl font-bold">Genoz</h4>
+                        <p class="text-blue-300">Technical Support</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Donation Section -->
+        <section id="donate" class="py-20 text-center">
+            <div class="container mx-auto px-6 fade-in-up">
+                <h2 class="text-4xl font-bold neon-glow-green">DUKUNG KOMUNITAS</h2>
+                <p class="text-lg mt-2 text-gray-400 max-w-2xl mx-auto mb-8">Setiap donasi sangat berarti untuk pengembangan dan pemeliharaan server kami. Berikan dukunganmu melalui SociaBuzz.</p>
+                <a href="https://sociabuzz.com/tribe" target="_blank" rel="noopener noreferrer" class="bg-green-600 text-white font-bold py-4 px-10 rounded-lg text-xl neon-button">
+                    Donasi via SociaBuzz <i class="fas fa-external-link-alt ml-2"></i>
+                </a>
+            </div>
+        </section>
+        
+        <!-- Contact Section -->
+        <section id="contact" class="py-20 bg-black bg-opacity-20">
+            <div class="container mx-auto px-6 text-center fade-in-up">
+                <h2 class="text-4xl font-bold neon-glow-blue">HUBUNGI KAMI</h2>
+                <p class="text-lg mt-2 text-gray-400 mb-8">Punya pertanyaan atau masukan? Jangan ragu untuk menghubungi kami.</p>
+                <div class="max-w-xl mx-auto">
+                    <form action="#" method="POST" class="space-y-6">
+                        <input type="text" placeholder="Nama Anda" class="w-full p-3 rounded-md bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white">
+                        <input type="email" placeholder="Email Anda" class="w-full p-3 rounded-md bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white">
+                        <textarea placeholder="Pesan Anda" rows="5" class="w-full p-3 rounded-md bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"></textarea>
+                        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-8 rounded-lg text-lg neon-button">
+                            Kirim Pesan
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-8 bg-black bg-opacity-40">
+        <div class="container mx-auto px-6 text-center text-gray-400">
+            <p>&copy; 2024 Velthron Community. All Rights Reserved.</p>
+            <div class="flex justify-center space-x-6 mt-4">
+                <a href="#" class="hover:text-blue-400 transition"><i class="fab fa-discord fa-2x"></i></a>
+                <a href="#" class="hover:text-green-400 transition"><i class="fab fa-youtube fa-2x"></i></a>
+                <a href="#" class="hover:text-pink-400 transition"><i class="fab fa-instagram fa-2x"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JS -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- Mobile Menu ---
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            // --- Sticky Header ---
+            const header = document.getElementById('header');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) {
+                    header.classList.add('bg-black', 'bg-opacity-70', 'backdrop-blur-sm');
+                } else {
+                    header.classList.remove('bg-black', 'bg-opacity-70', 'backdrop-blur-sm');
+                }
+            });
+
+            // --- Smooth Scrolling ---
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                        // Close mobile menu on click
+                        if (!mobileMenu.classList.contains('hidden')) {
+                            mobileMenu.classList.add('hidden');
+                        }
+                    }
+                });
+            });
+
+            // --- Scroll Animations ---
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.fade-in-up').forEach(el => {
+                observer.observe(el);
+            });
+
+            // --- Fake Server Status Check ---
+            // In a real application, this would use fetch() to ping a server API.
+            // For now, we'll simulate it with random results.
+            document.querySelectorAll('.server-status').forEach(statusElement => {
+                const parentCard = statusElement.closest('.card');
+                const statusText = parentCard.querySelector('.status-text');
+                setTimeout(() => {
+                    const isOnline = Math.random() > 0.3; // 70% chance of being online
+                    if (isOnline) {
+                        statusElement.classList.remove('bg-yellow-400', 'animate-pulse');
+                        statusElement.classList.add('bg-green-500');
+                        statusText.textContent = 'Online';
+                        statusText.classList.remove('text-yellow-400');
+                        statusText.classList.add('text-green-400');
+                    } else {
+                        statusElement.classList.remove('bg-yellow-400', 'animate-pulse');
+                        statusElement.classList.add('bg-red-500');
+                        statusText.textContent = 'Offline';
+                        statusText.classList.remove('text-yellow-400');
+                        statusText.classList.add('text-red-500');
+                    }
+                }, 1000 + Math.random() * 1500); // Random delay
+            });
+
+            // --- Gallery Carousel ---
+            const track = document.querySelector('.carousel-track');
+            const slides = Array.from(track.children);
+            const nextButton = document.getElementById('nextBtn');
+            const prevButton = document.getElementById('prevBtn');
+            const slideWidth = slides[0].getBoundingClientRect().width;
+            let currentIndex = 0;
+            
+            const setSlidePosition = (slide, index) => {
+                // This is now handled by flexbox, but could be used for absolute positioning if needed.
+            };
+
+            const moveToSlide = (currentTrack, targetIndex) => {
+                const amountToMove = targetIndex * (slideWidth);
+                currentTrack.style.transform = 'translateX(-' + amountToMove + 'px)';
+                currentIndex = targetIndex;
+            };
+
+            nextButton.addEventListener('click', e => {
+                let nextIndex = currentIndex + 1;
+                if(nextIndex >= slides.length - 2) nextIndex = 0; // simple loop
+                moveToSlide(track, nextIndex);
+            });
+
+            prevButton.addEventListener('click', e => {
+                let prevIndex = currentIndex - 1;
+                if(prevIndex < 0) prevIndex = slides.length - 3; // simple loop
+                 if(prevIndex < 0) prevIndex = 0;
+                moveToSlide(track, prevIndex);
+            });
+            
+             // --- Gallery Lightbox ---
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImg = document.getElementById('lightbox-img');
+            const galleryItems = document.querySelectorAll('.gallery-item');
+            const closeBtn = lightbox.querySelector('.close');
+            const lightboxPrev = document.getElementById('lightbox-prev');
+            const lightboxNext = document.getElementById('lightbox-next');
+            let currentImageIndex;
+
+            const updateLightboxImage = (index) => {
+                const imgSrc = galleryItems[index].src;
+                lightboxImg.src = imgSrc;
+                currentImageIndex = index;
+            };
+            
+            galleryItems.forEach((item, index) => {
+                item.addEventListener('click', () => {
+                    lightbox.style.display = 'flex';
+                    updateLightboxImage(index);
+                });
+            });
+
+            closeBtn.addEventListener('click', () => {
+                lightbox.style.display = 'none';
+            });
+            
+            lightbox.addEventListener('click', (e) => {
+                if (e.target === lightbox) {
+                     lightbox.style.display = 'none';
+                }
+            });
+            
+            lightboxNext.addEventListener('click', () => {
+                let nextIndex = (currentImageIndex + 1) % galleryItems.length;
+                updateLightboxImage(nextIndex);
+            });
+            
+            lightboxPrev.addEventListener('click', () => {
+                let prevIndex = (currentImageIndex - 1 + galleryItems.length) % galleryItems.length;
+                updateLightboxImage(prevIndex);
+            });
+        });
+
+        // --- Copy IP Function ---
+        function copyIp(ipAddress, buttonElement) {
+            // Create a temporary textarea element to hold the IP address
+            const textArea = document.createElement('textarea');
+            textArea.value = ipAddress;
+            document.body.appendChild(textArea);
+            textArea.select();
+            
+            try {
+                // Use the modern clipboard API if available
+                navigator.clipboard.writeText(ipAddress).then(() => {
+                    const originalText = buttonElement.innerHTML;
+                    buttonElement.innerHTML = '<i class="fas fa-check mr-2"></i> Copied!';
+                    setTimeout(() => {
+                        buttonElement.innerHTML = originalText;
+                    }, 2000);
+                }).catch(err => {
+                    // Fallback for older browsers
+                    document.execCommand('copy');
+                    const originalText = buttonElement.innerHTML;
+                    buttonElement.innerHTML = '<i class="fas fa-check mr-2"></i> Copied!';
+                    setTimeout(() => {
+                        buttonElement.innerHTML = originalText;
+                    }, 2000);
+                });
+            } catch (err) {
+                console.error('Failed to copy: ', err);
+            }
+
+            document.body.removeChild(textArea);
+        }
+
+    </script>
+</body>
 </html>
