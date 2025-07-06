@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LACROZAN COMMUNITY - Komunitas Gaming Minecraft</title>
+    <title>LACROZAN COMMUNITY - Komunitas & Server Minecraft</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,6 +15,7 @@
         html {
             scroll-behavior: smooth;
         }
+
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #0a0a0a;
@@ -29,7 +31,8 @@
 
         /* Neon Glow Effects */
         .neon-blue-text {
-            color: #67e8f9; /* Tailwind cyan-300 */
+            color: #67e8f9;
+            /* Tailwind cyan-300 */
             text-shadow: 0 0 5px rgba(103, 232, 249, 0.7), 0 0 10px rgba(103, 232, 249, 0.5), 0 0 15px rgba(103, 232, 249, 0.3);
         }
 
@@ -39,8 +42,10 @@
         }
 
         .neon-box {
-            border: 1px solid #22d3ee; /* Tailwind cyan-400 */
-            background-color: rgba(17, 24, 39, 0.6); /* Tailwind gray-900 with opacity */
+            border: 1px solid #22d3ee;
+            /* Tailwind cyan-400 */
+            background-color: rgba(17, 24, 39, 0.6);
+            /* Tailwind gray-900 with opacity */
             backdrop-filter: blur(10px);
             box-shadow: 0 0 12px rgba(34, 211, 238, 0.4), inset 0 0 12px rgba(34, 211, 238, 0.3);
             transition: all 0.3s ease-in-out;
@@ -92,17 +97,42 @@
         }
 
         /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1a1a1a; }
-        ::-webkit-scrollbar-thumb { background: #22d3ee; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #67e8f9; }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #22d3ee;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #67e8f9;
+        }
 
         /* Carousel */
-        .carousel-track { display: flex; transition: transform 0.5s ease-in-out; }
-        .carousel-slide { min-width: 100%; box-sizing: border-box; }
-        .page-section { min-height: 80vh; padding-top: 5rem; padding-bottom: 5rem;}
+        .carousel-track {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+        }
+
+        .carousel-slide {
+            min-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .page-section {
+            min-height: 80vh;
+            padding-top: 5rem;
+            padding-bottom: 5rem;
+        }
     </style>
 </head>
+
 <body class="bg-gray-900 text-gray-300">
 
     <!-- Header and Navigation -->
@@ -122,7 +152,9 @@
                 <a href="#kontak" class="nav-link text-gray-300 hover:text-white transition duration-300">Kontak</a>
             </nav>
             <button id="mobile-menu-button" class="lg:hidden text-white focus:outline-none">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
             </button>
         </div>
         <!-- Mobile Menu -->
@@ -137,27 +169,26 @@
         </div>
     </header>
 
-    <main class="container mx-auto px-6"><!-- COVER / HERO SECTION -->
-<!-- COVER / HERO SECTION FIXED -->
-<section id="home" class="relative flex items-center justify-center text-center min-h-screen overflow-hidden bg-black">
-  <!-- Background Image -->
-  <div class="absolute inset-0">
-    <img src="https://lh3.googleusercontent.com/u/0/d/1U3mYtQBJ4w6udsrls1r05yizIgYyCMsE"
-         alt="Cover Background"
-         class="w-full h-full object-cover blur-md scale-110 opacity-60">
-    <div class="absolute inset-0 bg-gradient-to-b from-black via-black/60 to-black/90"></div>
-  </div>
+    <main class="container mx-auto px-6">
+        <!-- COVER / HERO SECTION FIXED -->
+        <section id="home" class="relative flex items-center justify-center text-center min-h-screen overflow-hidden bg-black">
+            <!-- Background Image -->
+            <div class="absolute inset-0">
+                <img src="https://lh3.googleusercontent.com/u/0/d/1U3mYtQBJ4w6udsrls1r05yizIgYyCMsE" alt="Cover Background" class="w-full h-full object-cover blur-md scale-110 opacity-60">
+                <div class="absolute inset-0 bg-gradient-to-b from-black via-black/60 to-black/90"></div>
+            </div>
 
-  <!-- Content -->
-  <div class="relative z-10 w-full px-6 max-w-5xl mx-auto">
-    <h1 class="text-4xl sm:text-5xl md:text-7xl font-bold font-orbitron text-white mb-6 leading-tight">LACROZAN<br class="block sm:hidden" /> COMMUNITY</h1>
-    <p class="text-base sm:text-lg md:text-2xl text-gray-300 mb-8 leading-relaxed">
-      Gerbang menuju petualangan tanpa batas di dunia Minecraft.<br class="hidden sm:block">
-      Temukan server, teman, dan cerita baru bersama kami!
-    </p>
-    <a href="#server" class="btn-neon btn-neon-green font-bold py-3 px-8 rounded-lg text-base sm:text-lg">Mulai Petualangan</a>
-  </div>
-</section>
+            <!-- Content -->
+            <div class="relative z-10 w-full px-6 max-w-5xl mx-auto">
+                <h1 class="text-4xl sm:text-5xl md:text-7xl font-bold font-orbitron text-white mb-6 leading-tight">LACROZAN<br class="block sm:hidden" /> COMMUNITY</h1>
+                <p class="text-base sm:text-lg md:text-2xl text-gray-300 mb-8 leading-relaxed">
+                    Gerbang menuju petualangan tanpa batas di dunia Minecraft.<br class="hidden sm:block">
+                    Temukan server, teman, dan cerita baru bersama kami!
+                </p>
+                <a href="#server" class="btn-neon btn-neon-green font-bold py-3 px-8 rounded-lg text-base sm:text-lg">Mulai Petualangan</a>
+            </div>
+        </section>
+
         <!-- About Us Section -->
         <section id="tentang" class="page-section">
             <h2 class="text-4xl font-bold text-center mb-12 neon-blue-text">Tentang LACROZAN COMMUNITY</h2>
@@ -184,21 +215,21 @@
                         <div class="flex flex-wrap gap-4">
                             <button class="btn-copy-ip btn-neon btn-neon-blue py-2 px-4 rounded-lg flex items-center gap-2"><i class="fas fa-copy"></i> Salin IP</button>
                             <a href="https://sociabuzz.com/wahyumc09/tribe" target="_blank" class="btn-neon btn-neon-green py-2 px-4 rounded-lg flex items-center gap-2"><i class="fas fa-heart"></i> Donasi</a>
-                            
-                            <a href="https://chat.whatsapp.com/DG9nom02J3Z8pMIg1TngFv" target="_blank"
-   class="bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg text-lg inline-block transition duration-300 ease-in-out transform hover:scale-105">
-   <i class="fab fa-whatsapp mr-2"></i> Join Grup WhatsApp
-</a>
+
+                            <a href="https://chat.whatsapp.com/DG9nom02J3Z8pMIg1TngFv" target="_blank" class="bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg text-lg inline-block transition duration-300 ease-in-out transform hover:scale-105">
+                                <i class="fab fa-whatsapp mr-2"></i> Join Grup WhatsApp
+                            </a>
                         </div>
                         <details class="mt-4 text-sm cursor-pointer">
-                            <summary class="text-gray-400 hover:text-white font-semibold">RULES SERVER</summary><ul class="list-decimal list-inside mt-2 p-3 bg-black/30 rounded-md text-gray-300">
-  <li>No Cheat/Xray/Hack - Siapa pun yang curang akan langsung banned tanpa peringatan.</li>
-  <li>No Griefing / Stealing - Jangan merusak atau mencuri dari base orang lain.</li>
-  <li>No Toxic / SARA / Drama - Jaga sikap dan kata-kata, saling hormat satu sama lain.</li>
-  <li>Wajib Izin Sebelum PvP - PvP hanya boleh jika sama-sama setuju, kecuali saat event.</li>
-  <li>Gunakan Akal & Kreativitas - Mau bikin base rahasia, kerajaan, atau komunitas? Gas!</li>
-  <li>Laporkan jika ada pelanggaran ke Admin - Kita utamakan kenyamanan semua pemain.</li>
-</ul>
+                            <summary class="text-gray-400 hover:text-white font-semibold">RULES SERVER</summary>
+                            <ul class="list-decimal list-inside mt-2 p-3 bg-black/30 rounded-md text-gray-300">
+                                <li>No Cheat/Xray/Hack - Siapa pun yang curang akan langsung banned tanpa peringatan.</li>
+                                <li>No Griefing / Stealing - Jangan merusak atau mencuri dari base orang lain.</li>
+                                <li>No Toxic / SARA / Drama - Jaga sikap dan kata-kata, saling hormat satu sama lain.</li>
+                                <li>Wajib Izin Sebelum PvP - PvP hanya boleh jika sama-sama setuju, kecuali saat event.</li>
+                                <li>Gunakan Akal & Kreativitas - Mau bikin base rahasia, kerajaan, atau komunitas? Gas!</li>
+                                <li>Laporkan jika ada pelanggaran ke Admin - Kita utamakan kenyamanan semua pemain.</li>
+                            </ul>
 
                         </details>
                     </div>
@@ -216,30 +247,29 @@
                         <div class="flex flex-wrap gap-4">
                             <button class="btn-copy-ip btn-neon btn-neon-blue py-2 px-4 rounded-lg flex items-center gap-2" disabled><i class="fas fa-copy"></i> Salin IP</button>
                             <a href="https://sociabuzz.com/ghaisanmc/donate" target="_blank" class="btn-neon btn-neon-green py-2 px-4 rounded-lg flex items-center gap-2"><i class="fas fa-heart"></i> Donasi</a>
-                            
-                            <a href="https://chat.whatsapp.com/LxLX0Z4RCHq8yYEVaKwQTk?mode=ac_c" target="_blank"
-   class="bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg text-lg inline-block transition duration-300 ease-in-out transform hover:scale-105">
-   <i class="fab fa-whatsapp mr-2"></i> Join Grup WhatsApp
-</a>
+
+                            <a href="https://chat.whatsapp.com/LxLX0Z4RCHq8yYEVaKwQTk?mode=ac_c" target="_blank" class="bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg text-lg inline-block transition duration-300 ease-in-out transform hover:scale-105">
+                                <i class="fab fa-whatsapp mr-2"></i> Join Grup WhatsApp
+                            </a>
                         </div>
-                        
-                                              <details class="mt-4 text-sm cursor-pointer">
+
+                        <details class="mt-4 text-sm cursor-pointer">
                             <summary class="text-gray-400 hover:text-white font-semibold">RULES SERVER</summary>
                             <ul class="list-decimal list-inside mt-2 p-3 bg-black/30 rounded-md text-gray-300">
-  <li>No ngambil barang member</li>
-  <li>No nginjek sawah member</li>
-  <li>No ngambil barang tanpa izin</li>
-  <li>No terbakar/bom rumah member</li>
-  <li>No toxic ke member</li>
-  <li>No bully ke member</li>
-  <li>No laporan tanpa bukti</li>
-  <li>No cheating</li>
-  <li>No hacking</li>
-  <li>No thief</li>
-  <li>No hack client</li>
-  <li>No rusuh (kecuali di tempat PvP)</li>
-  <li>No ngancurin fasilitas</li>
-</ul>
+                                <li>No ngambil barang member</li>
+                                <li>No nginjek sawah member</li>
+                                <li>No ngambil barang tanpa izin</li>
+                                <li>No terbakar/bom rumah member</li>
+                                <li>No toxic ke member</li>
+                                <li>No bully ke member</li>
+                                <li>No laporan tanpa bukti</li>
+                                <li>No cheating</li>
+                                <li>No hacking</li>
+                                <li>No thief</li>
+                                <li>No hack client</li>
+                                <li>No rusuh (kecuali di tempat PvP)</li>
+                                <li>No ngancurin fasilitas</li>
+                            </ul>
 
                         </details>
                     </div>
@@ -248,7 +278,7 @@
                 <!-- ================== SERVER CARD: LABS SMP ================== -->
                 <!-- DEVELOPER: Ganti nilai data-ip dengan IP:PORT server Anda jika sudah tersedia -->
                 <div class="server-card neon-box p-8 rounded-lg grid md:grid-cols-3 gap-8 items-center" data-ip="play.labsmp.my.id:19134">
-                     <img src="https://lh3.googleusercontent.com/u/0/d/1cXL1jox7lO5iFnrJ3lnQ9r6kMni0zObd" alt="Logo LABS SMP" class="w-40 h-40 mx-auto md:mx-0 rounded-md" onerror="this.onerror=null;this.src='https://placehold.co/160x160/111827/FFFFFF?text=LABS';">
+                    <img src="https://lh3.googleusercontent.com/u/0/d/1cXL1jox7lO5iFnrJ3lnQ9r6kMni0zObd" alt="Logo LABS SMP" class="w-40 h-40 mx-auto md:mx-0 rounded-md" onerror="this.onerror=null;this.src='https://placehold.co/160x160/111827/FFFFFF?text=LABS';">
                     <div class="md:col-span-2">
                         <h3 class="text-3xl font-bold mb-2 neon-green-text">LABS SMP</h3>
                         <p class="mb-4">Server Roleplay (RP) berbasis survival dengan sistem season yang unik. Season 1: "Brutal Legend", hadirkan pengalaman roleplay yang mendalam.</p>
@@ -257,59 +287,53 @@
                         <div class="flex flex-wrap gap-4">
                             <button class="btn-copy-ip btn-neon btn-neon-blue py-2 px-4 rounded-lg flex items-center gap-2" disabled><i class="fas fa-copy"></i> Salin IP</button>
                             <a href="https://sociabuzz.com/ghaisanmc/donate" target="_blank" class="btn-neon btn-neon-green py-2 px-4 rounded-lg flex items-center gap-2"><i class="fas fa-heart"></i> Donasi</a>
-                            
-                            <a href="https://chat.whatsapp.com/BbV80FY9HXG9081yiWDBEL?mode=ac_c" target="_blank"
-   class="bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg text-lg inline-block transition duration-300 ease-in-out transform hover:scale-105">
-   <i class="fab fa-whatsapp mr-2"></i> Join Grup WhatsApp
-</a>
+
+                            <a href="https://chat.whatsapp.com/BbV80FY9HXG9081yiWDBEL?mode=ac_c" target="_blank" class="bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg text-lg inline-block transition duration-300 ease-in-out transform hover:scale-105">
+                                <i class="fab fa-whatsapp mr-2"></i> Join Grup WhatsApp
+                            </a>
                         </div>
                     </div>
-                    
-                                                                  <details class="mt-4 text-sm cursor-pointer">
-                            <summary class="text-gray-400 hover:text-white font-semibold">RULES SERVER</summary><ul class="list-decimal list-inside mt-2 p-3 bg-black/30 rounded-md text-gray-300">
-  <li>No ngambil barang member</li>
-  <li>No nginjek sawah member</li>
-  <li>No ngambil barang tanpa izin</li>
-  <li>No rusuh (kecuali di tempat PvP)</li>
-  <li>No ngancurin fasilitas</li>
-</ul>
 
+                    <details class="mt-4 text-sm cursor-pointer">
+                        <summary class="text-gray-400 hover:text-white font-semibold">RULES SERVER</summary>
+                        <ul class="list-decimal list-inside mt-2 p-3 bg-black/30 rounded-md text-gray-300">
+                            <li>No ngambil barang member</li>
+                            <li>No nginjek sawah member</li>
+                            <li>No ngambil barang tanpa izin</li>
+                            <li>No rusuh (kecuali di tempat PvP)</li>
+                            <li>No ngancurin fasilitas</li>
+                        </ul>
+                    </details>
+                </div>
 
-                        </details>
-                    
+                <!-- ================== SERVER CARD: GABUT SMP ================== -->
+                <!-- DEVELOPER: Ganti nilai data-ip dengan IP:PORT server Anda jika sudah tersedia -->
+                <div class="server-card neon-box p-8 rounded-lg grid md:grid-cols-3 gap-8 items-center" data-ip="lacrozan.panelfast.my.id:19132">
+                    <img src="https://lh3.googleusercontent.com/u/0/d/1cXL1jox7lO5iFnrJ3lnQ9r6kMni0zObd" alt="Logo GABUT SMP" class="w-40 h-40 mx-auto md:mx-0 rounded-md" onerror="this.onerror=null;this.src='https://placehold.co/160x160/111827/FFFFFF?text=GABUT';">
+                    <div class="md:col-span-2">
+                        <h3 class="text-3xl font-bold mb-2 neon-green-text">GABUT SMP</h3>
+                        <p class="mb-4">Gabut SMP adalah server Minecraft survival murni tanpa mod, tanpa cheat, dan tanpa bantuan OP. Di sini semua pemain main dari nol dan bertahan hidup dengan cara yang adil. Cocok buat kamu yang ingin main santai, bangun base, eksplorasi dunia, dan gabut bareng teman-teman. Komunitasnya ramah, nggak toxic, dan seru buat diajak main bareng kapan aja.</p>
+                        <p class="mb-2"><strong>Status:</strong> <span class="font-bold status-text text-gray-500">N/A (IP Belum Tersedia)</span></p>
+                        <p class="mb-4"><strong>Pemain:</strong> <span class="font-bold players-text">?/?</span></p>
+                        <div class="flex flex-wrap gap-4">
+                            <button class="btn-copy-ip btn-neon btn-neon-blue py-2 px-4 rounded-lg flex items-center gap-2" disabled><i class="fas fa-copy"></i> Salin IP</button>
+                            <a href="https://sociabuzz.com/ghaisanmc/donate" target="_blank" class="btn-neon btn-neon-green py-2 px-4 rounded-lg flex items-center gap-2"><i class="fas fa-heart"></i> Donasi</a>
+
+                            <a href="https://chat.whatsapp.com/FmjUhlAaduCHYCz8pjdjsS?mode=r_c" target="_blank" class="bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg text-lg inline-block transition duration-300 ease-in-out transform hover:scale-105">
+                                <i class="fab fa-whatsapp mr-2"></i> Join Grup WhatsApp
+                            </a>
+                        </div>
+                    </div>
+
+                    <details class="mt-4 text-sm cursor-pointer">
+                        <summary class="text-gray-400 hover:text-white font-semibold">RULES SERVER</summary>
+                        <div class="mt-2 p-3 bg-black/30 rounded-md text-gray-300">
+                            <p>Lihat aturan lengkapnya di grup WhatsApp:</p>
+                            <a href="https://chat.whatsapp.com/FmjUhlAaduCHYCz8pjdjsS?mode=r_c" target="_blank" class="underline text-blue-400">Klik di sini untuk buka rules</a>
+                        </div>
+                    </details>
                 </div>
             </div>
-
-<!-- ================== SERVER CARD: GABUT SMP ================== -->
-<!-- DEVELOPER: Ganti nilai data-ip dengan IP:PORT server Anda jika sudah tersedia -->
-<div class="server-card neon-box p-8 rounded-lg grid md:grid-cols-3 gap-8 items-center" data-ip="lacrozan.panelfast.my.id:19132">
-    <img src="https://lh3.googleusercontent.com/u/0/d/1cXL1jox7lO5iFnrJ3lnQ9r6kMni0zObd" alt="Logo GABUT SMP" class="w-40 h-40 mx-auto md:mx-0 rounded-md" onerror="this.onerror=null;this.src='https://placehold.co/160x160/111827/FFFFFF?text=GABUT';">
-    <div class="md:col-span-2">
-        <h3 class="text-3xl font-bold mb-2 neon-green-text">GABUT SMP</h3>
-        <p class="mb-4">Gabut SMP adalah server Minecraft survival murni tanpa mod, tanpa cheat, dan tanpa bantuan OP. Di sini semua pemain main dari nol dan bertahan hidup dengan cara yang adil. Cocok buat kamu yang ingin main santai, bangun base, eksplorasi dunia, dan gabut bareng teman-teman. Komunitasnya ramah, nggak toxic, dan seru buat diajak main bareng kapan aja.</p>
-        <p class="mb-2"><strong>Status:</strong> <span class="font-bold status-text text-gray-500">N/A (IP Belum Tersedia)</span></p>
-        <p class="mb-4"><strong>Pemain:</strong> <span class="font-bold players-text">?/?</span></p>
-        <div class="flex flex-wrap gap-4">
-            <button class="btn-copy-ip btn-neon btn-neon-blue py-2 px-4 rounded-lg flex items-center gap-2" disabled><i class="fas fa-copy"></i> Salin IP</button>
-            <a href="https://sociabuzz.com/ghaisanmc/donate" target="_blank" class="btn-neon btn-neon-green py-2 px-4 rounded-lg flex items-center gap-2"><i class="fas fa-heart"></i> Donasi</a>
-            
-            <a href="https://chat.whatsapp.com/FmjUhlAaduCHYCz8pjdjsS?mode=r_c" target="_blank"
-               class="bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg text-lg inline-block transition duration-300 ease-in-out transform hover:scale-105">
-               <i class="fab fa-whatsapp mr-2"></i> Join Grup WhatsApp
-            </a>
-        </div>
-    </div>
-
-    <details class="mt-4 text-sm cursor-pointer">
-        <summary class="text-gray-400 hover:text-white font-semibold">RULES SERVER</summary>
-        <div class="mt-2 p-3 bg-black/30 rounded-md text-gray-300">
-            <p>Lihat aturan lengkapnya di grup WhatsApp:</p>
-            <a href="https://chat.whatsapp.com/FmjUhlAaduCHYCz8pjdjsS?mode=r_c" target="_blank" class="underline text-blue-400">Klik di sini untuk buka rules</a>
-        </div>
-    </details>
-</div>
-
-
         </section>
 
         <!-- Gallery Section -->
@@ -329,85 +353,84 @@
                 </div>
             </div>
         </section>
-<!-- Team Section -->
-<section id="tim" class="page-section">
-    <h2 class="text-4xl font-bold text-center mb-12 neon-blue-text">Tim Pengembang</h2>
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 max-w-5xl mx-auto">
-        
-        <!-- Ghaisan -->
-        <div class="text-center group">
-            <img src="https://lh3.googleusercontent.com/u/0/d/1D-L8PdMtsc-hvnBF7EfGFWClJi8aj0QV" alt="Avatar Ghaisan" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
-            <h3 class="text-xl font-bold text-white">Ghaisan</h3>
-            <p class="text-green-300">Owner, Builder & Founder</p>
-        </div>
 
-        <!-- Vennn -->
-        <div class="text-center group">
-            <img src="https://lh3.googleusercontent.com/u/0/d/1gxiBs3G6fMqO8wUIN8thuwHnkdAp50BM" alt="Avatar Vennn" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
-            <h3 class="text-xl font-bold text-white">Vennn</h3>
-            <p class="text-green-300">Owner & Co-Founder</p>
-        </div>
+        <!-- Team Section -->
+        <section id="tim" class="page-section">
+            <h2 class="text-4xl font-bold text-center mb-12 neon-blue-text">Tim Pengembang</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 max-w-5xl mx-auto">
 
-        <!-- Wahyu -->
-        <div class="text-center group">
-            <img src="https://lh3.googleusercontent.com/u/0/d/19214GhUaw4eIMLGAjthtqOyB2mti5lGQ" alt="Avatar Wahyu" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
-            <h3 class="text-xl font-bold text-white">Wahyu</h3>
-            <p class="text-green-300">Owner & Founder</p>
-        </div>
+                <!-- Ghaisan -->
+                <div class="text-center group">
+                    <img src="https://lh3.googleusercontent.com/u/0/d/1D-L8PdMtsc-hvnBF7EfGFWClJi8aj0QV" alt="Avatar Ghaisan" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <h3 class="text-xl font-bold text-white">Ghaisan</h3>
+                    <p class="text-green-300">Owner, Builder & Founder</p>
+                </div>
 
-        <!-- Gabriel -->
-        <div class="text-center group">
-            <img src="https://lh3.googleusercontent.com/u/0/d/1LHDtfuXG6M6WmKExPWxPQnR8jgBWanL2" alt="Avatar Gabriel" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
-            <h3 class="text-xl font-bold text-white">Gabriel</h3>
-            <p class="text-green-300">Owner & Co-Founder</p>
-        </div>
+                <!-- Vennn -->
+                <div class="text-center group">
+                    <img src="https://lh3.googleusercontent.com/u/0/d/1gxiBs3G6fMqO8wUIN8thuwHnkdAp50BM" alt="Avatar Vennn" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <h3 class="text-xl font-bold text-white">Vennn</h3>
+                    <p class="text-green-300">Owner & Co-Founder</p>
+                </div>
 
-        <!-- Genoz -->
-        <div class="text-center group">
-            <img src="https://lh3.googleusercontent.com/u/0/d/1eEQ1O3FZrW__Oq-baKIDR9chkNhHuXhm" alt="Avatar Genoz" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
-            <h3 class="text-xl font-bold text-white">Genoz</h3>
-            <p class="text-green-300">Owner & Co-Founder</p>
-        </div>
+                <!-- Wahyu -->
+                <div class="text-center group">
+                    <img src="https://lh3.googleusercontent.com/u/0/d/19214GhUaw4eIMLGAjthtqOyB2mti5lGQ" alt="Avatar Wahyu" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <h3 class="text-xl font-bold text-white">Wahyu</h3>
+                    <p class="text-green-300">Owner & Founder</p>
+                </div>
 
-        <!-- Jerry -->
-        <div class="text-center group">
-            <img src="https://lh3.googleusercontent.com/u/0/d/1jWXiGRW2bfFyZ7ELXq0N_XCbIR-vAXKI" alt="Avatar Jerry" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
-            <h3 class="text-xl font-bold text-white">Jerry</h3>
-            <p class="text-green-300">Admin Server & Builder</p>
-        </div>
+                <!-- Gabriel -->
+                <div class="text-center group">
+                    <img src="https://lh3.googleusercontent.com/u/0/d/1LHDtfuXG6M6WmKExPWxPQnR8jgBWanL2" alt="Avatar Gabriel" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <h3 class="text-xl font-bold text-white">Gabriel</h3>
+                    <p class="text-green-300">Owner & Co-Founder</p>
+                </div>
 
-        <!-- Aditya -->
-        <div class="text-center group">
-            <img src="https://lh3.googleusercontent.com/u/0/d/1bG20rXdkZ1wMNWnm5H3x8qdrZb7W3VCe" alt="Avatar Aditya" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
-            <h3 class="text-xl font-bold text-white">Aditya</h3>
-            <p class="text-green-300">Admin</p>
-        </div>
+                <!-- Genoz -->
+                <div class="text-center group">
+                    <img src="https://lh3.googleusercontent.com/u/0/d/1eEQ1O3FZrW__Oq-baKIDR9chkNhHuXhm" alt="Avatar Genoz" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <h3 class="text-xl font-bold text-white">Genoz</h3>
+                    <p class="text-green-300">Owner & Co-Founder</p>
+                </div>
 
-        <!-- Arip -->
-        <div class="text-center group">
-            <img src="https://lh3.googleusercontent.com/u/0/d/1hKj4YvO2dE65oNWQekajxysW2CRQP8fW" alt="Avatar Arip" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
-            <h3 class="text-xl font-bold text-white">Arip</h3>
-            <p class="text-green-300">Builder</p>
-        </div>
-    </div>
+                <!-- Jerry -->
+                <div class="text-center group">
+                    <img src="https://lh3.googleusercontent.com/u/0/d/1jWXiGRW2bfFyZ7ELXq0N_XCbIR-vAXKI" alt="Avatar Jerry" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <h3 class="text-xl font-bold text-white">Jerry</h3>
+                    <p class="text-green-300">Admin Server & Builder</p>
+                </div>
 
- <!-- Dinda -->
-        <div class="text-center group">
-            <img src="https://lh3.googleusercontent.com/u/0/d/1wziUWAMalenDSWIDQnStohNNiUkUBFsU" alt="Avatar Arip" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
-            <h3 class="text-xl font-bold text-white">Dinda</h3>
-            <p class="text-green-300">Owner & Founder</p>
-        </div>
-    </div>
+                <!-- Aditya -->
+                <div class="text-center group">
+                    <img src="https://lh3.googleusercontent.com/u/0/d/1bG20rXdkZ1wMNWnm5H3x8qdrZb7W3VCe" alt="Avatar Aditya" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <h3 class="text-xl font-bold text-white">Aditya</h3>
+                    <p class="text-green-300">Admin</p>
+                </div>
 
- <!-- Fast -->
-        <div class="text-center group">
-            <img src="https://lh3.googleusercontent.com/u/0/d/1PhWF1ow73_aksUh6INgy6nDFer3ZKVu2" alt="Avatar Arip" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
-            <h3 class="text-xl font-bold text-white">Fast</h3>
-            <p class="text-green-300">Admin & Builder</p>
-        </div>
-    </div>
+                <!-- Arip -->
+                <div class="text-center group">
+                    <img src="https://lh3.googleusercontent.com/u/0/d/1hKj4YvO2dE65oNWQekajxysW2CRQP8fW" alt="Avatar Arip" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <h3 class="text-xl font-bold text-white">Arip</h3>
+                    <p class="text-green-300">Builder</p>
+                </div>
 
-</section>
+                <!-- Dinda -->
+                <div class="text-center group">
+                    <img src="https://lh3.googleusercontent.com/u/0/d/1wziUWAMalenDSWIDQnStohNNiUkUBFsU" alt="Avatar Dinda" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <h3 class="text-xl font-bold text-white">Dinda</h3>
+                    <p class="text-green-300">Owner & Founder</p>
+                </div>
+
+                <!-- Fast -->
+                <div class="text-center group">
+                    <img src="https://lh3.googleusercontent.com/u/0/d/1PhWF1ow73_aksUh6INgy6nDFer3ZKVu2" alt="Avatar Fast" class="w-32 h-32 rounded-full mx-auto mb-4 border-2 border-green-400 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <h3 class="text-xl font-bold text-white">Fast</h3>
+                    <p class="text-green-300">Admin & Builder</p>
+                </div>
+            </div>
+
+        </section>
 
 
         <!-- Donation Section -->
@@ -457,7 +480,7 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             // --- SMOOTH SCROLL & ACTIVE LINK HIGHLIGHTER ---
             const navLinks = document.querySelectorAll('.nav-link');
             const sections = document.querySelectorAll('.page-section');
@@ -466,7 +489,7 @@
 
             function changeActiveLink() {
                 let index = sections.length;
-                while(--index && window.scrollY + 100 < sections[index].offsetTop) {}
+                while (--index && window.scrollY + 100 < sections[index].offsetTop) {}
 
                 navLinks.forEach((link) => link.classList.remove('active'));
 
@@ -494,7 +517,9 @@
                 const statusEl = serverCard.querySelector('.status-text');
                 const playersEl = serverCard.querySelector('.players-text');
 
-                if (!ip) { return; } // Do nothing if IP is not set
+                if (!ip) {
+                    return;
+                } // Do nothing if IP is not set
 
                 try {
                     const response = await fetch(`https://api.mcstatus.io/v2/status/bedrock/${ip}`);
@@ -526,7 +551,7 @@
             const copyAlert = document.getElementById('copy-alert');
             copyButtons.forEach(button => {
                 button.addEventListener('click', () => {
-                    if(button.disabled) return;
+                    if (button.disabled) return;
                     const serverCard = button.closest('.server-card');
                     const ip = serverCard.dataset.ip;
                     if (ip) {
@@ -594,9 +619,12 @@
 
             lightboxClose.addEventListener('click', closeLightbox);
             lightbox.addEventListener('click', (e) => {
-                if (e.target === lightbox) { closeLightbox(); }
+                if (e.target === lightbox) {
+                    closeLightbox();
+                }
             });
         });
     </script>
 </body>
+
 </html>
